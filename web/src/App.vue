@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import type { HerbstConfig } from "./types/config";
 import { applyTheme } from "./lib/theme";
 import LayoutShell from "./components/LayoutShell.vue";
@@ -9,7 +9,9 @@ const config = ref<HerbstConfig | null>(null);
 const loading = ref(true);
 const error = ref<string | null>(null);
 
-onMounted(async () => {
+let eventSource: EventSource | null = null;
+
+async function loadConfig() {
   try {
     const res = await fetch("/api/config");
     if (!res.ok) throw new Error("Failed to load config");
@@ -17,11 +19,40 @@ onMounted(async () => {
     config.value = data;
     applyTheme(data.themeVars);
     document.title = data.title || "herbst";
+    error.value = null;
   } catch (e) {
     error.value = (e as Error).message;
   } finally {
     loading.value = false;
   }
+}
+
+function setupLiveReload() {
+  eventSource = new EventSource("/api/events");
+
+  eventSource.addEventListener("connected", () => {
+    console.log("🍂 Connected to herbst live reload");
+  });
+
+  eventSource.addEventListener("reload", () => {
+    console.log("🔄 Config changed, reloading...");
+    loadConfig();
+  });
+
+  eventSource.onerror = () => {
+    console.log("SSE connection lost, reconnecting in 3s...");
+    eventSource?.close();
+    setTimeout(setupLiveReload, 3000);
+  };
+}
+
+onMounted(() => {
+  loadConfig();
+  setupLiveReload();
+});
+
+onUnmounted(() => {
+  eventSource?.close();
 });
 </script>
 
