@@ -1,2 +1,3 @@
 # herbst
-A cozy, minimal homelab dashboard powered entirely by a single TOML config. 🍂🍁
+
+A cozy, minimal homelab dashboard. Zero database, just TOML. 🍂🍁
