@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Logo from "./Logo.vue";
 defineProps<{
   title: string;
   background?: string;
@@ -13,6 +14,7 @@ defineProps<{
     <div class="layout-overlay" v-if="background"></div>
     <div class="layout-content">
       <header class="header">
+        <Logo size="120" />
         <h1>{{ title }}</h1>
       </header>
       <main class="main">
