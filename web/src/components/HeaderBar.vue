@@ -8,12 +8,20 @@ const props = defineProps<{
   weather: WeatherConfig;
 }>();
 
+const emit = defineEmits<{
+  (e: "search", query: string): void;
+}>();
+
+const searchQuery = ref("");
+
+function onSearchInput() {
+  emit("search", searchQuery.value);
+}
+
 const time = ref("");
 const date = ref("");
-const cpuLoad = ref("0%");
-const uptime = ref("0h");
-const isOnline = ref(true);
 const use24h = ref(true);
+const useGermanDate = ref(true); // true = "3. Dez 2025", false = "03.12.2025"
 
 // Weather state
 const weatherData = ref<{
@@ -31,18 +39,27 @@ let weatherInterval: ReturnType<typeof setInterval> | null = null;
 function updateClock() {
   const now = new Date();
 
-  time.value = now.toLocaleTimeString([], {
+  time.value = now.toLocaleTimeString("de-DE", {
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
     hour12: !use24h.value,
   });
 
-  date.value = now.toLocaleDateString([], {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  if (useGermanDate.value) {
+    // German format: "3. Dez 2025"
+    date.value = now.toLocaleDateString("de-DE", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } else {
+    // Numeric format: "03.12.2025"
+    date.value = now.toLocaleDateString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  }
 }
 
 function toggleHourFormat() {
@@ -50,10 +67,9 @@ function toggleHourFormat() {
   updateClock();
 }
 
-// Fake CPU/Uptime (du kannst später echte Endpoints reinballern)
-function updateSystemInfo() {
-  cpuLoad.value = Math.round(Math.random() * 20) + "%";
-  uptime.value = `${Math.round(Math.random() * 48)}h`;
+function toggleDateFormat() {
+  useGermanDate.value = !useGermanDate.value;
+  updateClock();
 }
 
 async function fetchWeather() {
@@ -100,9 +116,7 @@ function formatTemp(temp: number, units: string): string {
 
 onMounted(() => {
   updateClock();
-  updateSystemInfo();
   setInterval(updateClock, 1000);
-  setInterval(updateSystemInfo, 5000);
 
   // Fetch weather immediately and then every hour
   fetchWeather();
@@ -130,6 +144,7 @@ onUnmounted(() => {
 
 <template>
   <header class="header-bar">
+    <!-- Left section - fixed width -->
     <div class="header-left">
       <div class="logo-icon">
         <Logo />
@@ -137,7 +152,22 @@ onUnmounted(() => {
       <span class="title">{{ title }}</span>
     </div>
 
-    <div class="status-bar">
+    <!-- Center section - search bar always centered -->
+    <div class="header-center">
+      <div class="search-container">
+        <input
+          v-model="searchQuery"
+          type="text"
+          class="search-input"
+          placeholder="Search services..."
+          @input="onSearchInput"
+        />
+        <span class="search-icon mdi mdi-magnify"></span>
+      </div>
+    </div>
+
+    <!-- Right section - fixed width -->
+    <div class="header-right">
       <!-- Weather -->
       <div v-if="weatherData" class="weather-info">
         <img
@@ -145,24 +175,19 @@ onUnmounted(() => {
           :alt="weatherData.description"
           class="weather-icon"
         />
-        <span class="weather-temp">{{
-          formatTemp(weatherData.temp, weatherData.units)
-        }}</span>
-        <span class="weather-divider">·</span>
-        <span class="weather-city">{{ weatherData.city }}</span>
+        <div class="weather-text">
+          <span class="weather-temp">{{
+            formatTemp(weatherData.temp, weatherData.units)
+          }}</span>
+          <span class="weather-city">{{ weatherData.city }}</span>
+        </div>
       </div>
 
-      <!-- Online Badge -->
-      <span class="dot" :class="{ online: isOnline }"></span>
-
-      <!-- Time -->
-      <span class="time" @click="toggleHourFormat">{{ time }}</span>
-
-      <!-- Date -->
-      <span class="date">{{ date }}</span>
-
-      <!-- CPU + Uptime -->
-      <span class="meta">CPU {{ cpuLoad }} · UP {{ uptime }}</span>
+      <!-- DateTime stacked -->
+      <div class="datetime">
+        <span class="time" @click="toggleHourFormat">{{ time }}</span>
+        <span class="date" @click="toggleDateFormat">{{ date }}</span>
+      </div>
     </div>
   </header>
 </template>
@@ -173,7 +198,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 10px 20px;
-  padding-left: 12px; /* Less padding on left for logo integration */
+  padding-left: 12px;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   border-radius: 3em;
@@ -187,6 +212,24 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.header-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .logo-icon {
@@ -198,83 +241,117 @@ onUnmounted(() => {
   flex-shrink: 0;
   padding: 8px;
   box-sizing: border-box;
-  margin-left: -2px; /* Slight overlap with header edge */
+  margin-left: -2px;
 }
 
 .title {
   font-size: 1.3rem;
   font-weight: 600;
   color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.status-bar {
+/* Search Bar */
+.search-container {
+  position: relative;
+  width: 300px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 16px;
+  padding-left: 40px;
+  background: var(--color-bg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2em;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-input::placeholder {
+  color: var(--color-text);
+  opacity: 0.5;
+}
+
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.9rem;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.datetime {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px; /* perfekt */
+  gap: 2px;
   font-size: 0.85rem;
-  color: var(--color-text-muted);
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-text-muted);
-  transition: background 0.2s;
-}
-
-.dot.online {
-  background: #4ade80; /* green-400 */
 }
 
 .time {
   font-weight: 600;
+  font-size: 1rem;
   cursor: pointer;
   user-select: none;
   transition: color 0.2s;
+  color: var(--color-text);
 }
+
 .time:hover {
   color: var(--color-accent);
 }
 
 .date {
-  color: var(--color-text-muted);
+  color: var(--color-text);
+  opacity: 0.6;
+  font-size: 0.8rem;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s, opacity 0.2s;
 }
 
-.meta {
-  color: var(--color-text-muted);
-  font-size: 0.78rem;
-  opacity: 0.8;
+.date:hover {
+  color: var(--color-accent);
+  opacity: 1;
 }
 
 .weather-info {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding-right: 8px;
+  gap: 8px;
+  padding-right: 16px;
   border-right: 1px solid var(--color-border);
-  margin-right: 4px;
 }
 
 .weather-icon {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
-  margin: -4px;
+}
+
+.weather-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
 }
 
 .weather-temp {
   font-weight: 600;
+  font-size: 1rem;
   color: var(--color-text);
 }
 
-.weather-divider {
-  color: var(--color-text-muted);
-  opacity: 0.6;
-}
-
 .weather-city {
-  color: var(--color-text-muted);
+  color: var(--color-text);
+  opacity: 0.6;
   font-size: 0.8rem;
 }
 </style>

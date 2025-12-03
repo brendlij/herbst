@@ -13,6 +13,7 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: "tabChange", tab: string): void;
+  (e: "search", query: string): void;
 }>();
 </script>
 
@@ -23,7 +24,11 @@ const emit = defineEmits<{
         <Logo size="120" />
         <h1>{{ title }}</h1>
       </header> -->
-      <HeaderBar :title="title" :weather="weather" />
+      <HeaderBar
+        :title="title"
+        :weather="weather"
+        @search="emit('search', $event)"
+      />
 
       <!-- Tabs unter dem Header -->
       <HeaderTabs

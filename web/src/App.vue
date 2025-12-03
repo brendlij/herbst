@@ -12,6 +12,7 @@ const error = ref<string | null>(null);
 
 // Persist active tab in localStorage
 const activeTab = ref(localStorage.getItem("herbst-active-tab") || "services");
+const searchQuery = ref("");
 
 let eventSource: EventSource | null = null;
 
@@ -133,10 +134,12 @@ onUnmounted(() => {
       :docker="config.docker"
       :active-tab="activeTab"
       @tab-change="activeTab = $event"
+      @search="searchQuery = $event"
     >
       <ServiceGrid
         v-if="activeTab === 'services'"
         :services="config.services"
+        :search-query="searchQuery"
       />
       <DockerGrid v-else-if="activeTab === 'docker'" :docker="config.docker" />
     </LayoutShell>

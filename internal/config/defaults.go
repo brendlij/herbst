@@ -19,7 +19,7 @@ blur = 0
 [weather]
 enabled = false
 api-key = ""     # Direct key or ${ENV_VAR_NAME}
-location = ""    # City (e.g. "London,GB"), zip code (e.g. "79650,DE"), or empty for lat/lon
+location = ""    # City (e.g. "London,GB"), zip code (e.g. "10115,DE"), or empty for lat/lon
 lat = 0.0        # Latitude (only used if location is empty)
 lon = 0.0        # Longitude (only used if location is empty)
 units = "metric" # metric (°C), imperial (°F), or standard (K)
