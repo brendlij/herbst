@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="/docs/images/logoherbstfarben.svg" alt="herbst logo" width="96" />
+  <img src="/docs/images/logoherbstfarben.svg" alt="herbst logo" width="128" />
 </p>
 
 <h1 align="center">herbst</h1>
