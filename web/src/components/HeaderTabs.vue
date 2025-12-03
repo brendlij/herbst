@@ -32,12 +32,13 @@ const emit = defineEmits<{
 <style scoped>
 .tabs {
   display: flex;
-  justify-content: center;
-  margin-top: 12px;
+  justify-content: flex-start;
   gap: 8px;
+  background-color: var(--color-surface);
+  border-radius: 0 0 2em 2em;
 
   /* Tabs sollen schweben */
-  padding: 4px 0;
+  padding: 4px 0 1em 1em;
 }
 
 .tab {

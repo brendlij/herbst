@@ -98,10 +98,6 @@ watch(
         :key="container.id"
         class="container-card"
       >
-        <div
-          class="container-indicator"
-          :class="getStateClass(container.state)"
-        ></div>
         <div class="container-content">
           <span class="container-name">{{ container.name }}</span>
           <span class="container-status">{{ container.status }}</span>
@@ -168,47 +164,6 @@ watch(
   transform: translateY(-2px);
 }
 
-/* Minimal status indicator dot */
-.container-indicator {
-  width: 10px;
-  height: 10px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-.container-indicator.state-running {
-  background-color: #86efac;
-  box-shadow: 0 0 8px rgba(134, 239, 172, 0.5);
-}
-
-.container-indicator.state-stopped {
-  background-color: #fca5a5;
-}
-
-.container-indicator.state-paused {
-  background-color: #fcd34d;
-}
-
-.container-indicator.state-restarting {
-  background-color: #93c5fd;
-  animation: pulse-indicator 1.5s ease-in-out infinite;
-}
-
-.container-indicator.state-unknown {
-  background-color: #94a3b8;
-}
-
-@keyframes pulse-indicator {
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
 .container-content {
   display: flex;
   flex-direction: column;
@@ -238,8 +193,8 @@ watch(
 .status-line {
   position: absolute;
   bottom: 0;
-  left: 20%;
-  right: 20%;
+  left: 10%;
+  right: 10%;
   height: 3px;
   border-radius: 3px 3px 0 0;
   transition: background-color 0.3s ease;

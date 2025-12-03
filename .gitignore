@@ -139,7 +139,7 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 
-runtime/
+runtime/*
 dist/
 build/
 *.exe
