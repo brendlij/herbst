@@ -70,11 +70,15 @@ onMounted(() => {
     (background) => {
       console.log("Background config:", JSON.stringify(background));
       if (background && background.image) {
-        console.log("Setting bg-image to:", background.image);
-        document.body.style.setProperty(
-          "--bg-image",
-          `url(${background.image})`
-        );
+        // Resolve image path: if it's not an absolute URL, prepend /static/
+        const imagePath =
+          background.image.startsWith("http://") ||
+          background.image.startsWith("https://") ||
+          background.image.startsWith("/")
+            ? background.image
+            : `/static/${background.image}`;
+        console.log("Setting bg-image to:", imagePath);
+        document.body.style.setProperty("--bg-image", `url(${imagePath})`);
         document.body.style.setProperty(
           "--bg-blur",
           `${background.blur || 0}px`
