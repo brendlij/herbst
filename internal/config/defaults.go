@@ -3,7 +3,8 @@ package config
 // DefaultConfigTOML is the default configuration file content
 // Note: You can use ${ENV_VAR_NAME} syntax to reference environment variables
 const DefaultConfigTOML = `title = "herbst – homelab"
-theme = "default"
+# Available themes: autumn, earthy, bright, glass
+theme = "autumn"
 
 [ui]
 font = ""

@@ -1,9 +1,9 @@
 package themes
 
 // DefaultThemesTOML is the default themes file content
-const DefaultThemesTOML = `[theme.default]
-name = "Default"
-[theme.default.vars]
+const DefaultThemesTOML = `[theme.earthy]
+name = "Earthy"
+[theme.earthy.vars]
 color-bg      = "#302e2dff"
 color-surface = "#626655ff"
 color-text    = "#d3d4c5ff"
