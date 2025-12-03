@@ -8,7 +8,7 @@
       rel="noopener"
       class="footer-link"
     >
-      <span>Powered by Herbst</span>
+      <span>Powered by Herbst 🍂🍁</span>
       <i class="mdi mdi-github"></i>
     </a>
   </footer>
