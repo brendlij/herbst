@@ -9,11 +9,11 @@ services:
       - "8080:8080"
     volumes:
       # Config directory (contains config.toml and themes.toml)
+      # Use ./config for portable setup, or /etc/herbst/config for system-wide
       - ./config:/app/config
-      # Assets directory (for custom icons, backgrounds, etc.)
-      - ./assets:/app/assets
-      # Theme Directory (for default and custom themes)
-      - ./themes:/app/themes
+      # Static files (for custom icons, backgrounds, etc.)
+      # Use ./static for portable setup, or /etc/herbst/static for system-wide
+      - ./static:/app/static
       # Docker socket (required for Docker tab)
       - /var/run/docker.sock:/var/run/docker.sock
     environment:

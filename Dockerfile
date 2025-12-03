@@ -44,12 +44,12 @@ COPY --from=backend-builder /app/herbst .
 # Copy frontend build
 COPY --from=frontend-builder /app/web/dist ./web/dist
 
-# Create directories for config and assets
-RUN mkdir -p /app/config /app/assets
+# Create directories for config and static files
+RUN mkdir -p /app/config /app/static
 
 # Environment variables
 ENV HERBST_CONFIG_DIR=/app/config
-ENV HERBST_ASSETS_DIR=/app/assets
+ENV HERBST_STATIC_DIR=/app/static
 
 EXPOSE 8080
 

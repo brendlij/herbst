@@ -9,7 +9,7 @@ theme = "default"
 font = ""
 
 [ui.background]
-image = ""
+image = ""  # Filename from /static folder (e.g. "bg.jpg") or full URL
 blur = 0
 
 # Weather configuration (OpenWeatherMap)

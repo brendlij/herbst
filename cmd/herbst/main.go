@@ -23,9 +23,9 @@ import (
 )
 
 const (
-	envAssetsDir       = "HERBST_ASSETS_DIR"
-	devAssetsDir       = "./runtime/assets"
-	containerAssetsDir = "/app/assets"
+	envStaticDir       = "HERBST_STATIC_DIR"
+	devStaticDir       = "./runtime/static"
+	containerStaticDir = "/app/static"
 )
 
 // APIConfig is the response structure for /api/config
@@ -583,15 +583,15 @@ func main() {
 		}
 	})
 
-	// Serve user assets (if directory exists) under /static/
-	assetsDir := util.ResolveDir(envAssetsDir, devAssetsDir, containerAssetsDir)
-	if _, err := os.Stat(assetsDir); err == nil {
-		log.Printf("Serving user assets from: %s at /static/", assetsDir)
+	// Serve static files (if directory exists) under /static/
+	staticDir := util.ResolveDir(envStaticDir, devStaticDir, containerStaticDir)
+	if _, err := os.Stat(staticDir); err == nil {
+		log.Printf("Serving static files from: %s at /static/", staticDir)
 		mux.Handle("/static/", http.StripPrefix("/static/",
-			http.FileServer(http.Dir(assetsDir)),
+			http.FileServer(http.Dir(staticDir)),
 		))
 	} else {
-		log.Printf("User assets directory not found, skipping: %s", assetsDir)
+		log.Printf("Static directory not found, skipping: %s", staticDir)
 	}
 
 	// Serve frontend (Vue + Vite build)

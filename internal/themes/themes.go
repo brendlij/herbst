@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	envThemesDir       = "HERBST_THEMES_DIR"
-	devThemesDir       = "./runtime/themes"
-	containerThemesDir = "/app/themes"
+	envConfigDir       = "HERBST_CONFIG_DIR"
+	devConfigDir       = "./runtime/config"
+	containerConfigDir = "/app/config"
 	themesFilename     = "themes.toml"
 )
 
@@ -31,8 +31,8 @@ type ThemeFile struct {
 // EnsureAndLoadThemes loads the themes file, creating it with defaults if it doesn't exist.
 // Returns the theme file, the absolute path to the themes file, and any error.
 func EnsureAndLoadThemes() (*ThemeFile, string, error) {
-	// Determine themes directory
-	dir := util.ResolveDir(envThemesDir, devThemesDir, containerThemesDir)
+	// Determine config directory (themes.toml lives alongside config.toml)
+	dir := util.ResolveDir(envConfigDir, devConfigDir, containerConfigDir)
 
 	// Ensure directory exists
 	if err := util.EnsureDir(dir); err != nil {
