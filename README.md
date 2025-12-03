@@ -1,4 +1,4 @@
-> [!NOTE]
+> [!WARNING]
 > This project is in active development. So bugs and wrong behavior is expected.
 
 # herbst
