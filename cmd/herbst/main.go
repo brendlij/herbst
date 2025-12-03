@@ -28,12 +28,18 @@ const (
 	containerStaticDir = "/app/static"
 )
 
+// DockerAPIConfig is the resolved Docker config for API responses
+type DockerAPIConfig struct {
+	Enabled    bool   `json:"enabled"`
+	SocketPath string `json:"socketPath"`
+}
+
 // APIConfig is the response structure for /api/config
 type APIConfig struct {
 	Title     string            `json:"title"`
 	UI        config.UI         `json:"ui"`
 	Weather   config.Weather    `json:"weather"`
-	Docker    config.Docker     `json:"docker"`
+	Docker    DockerAPIConfig   `json:"docker"`
 	Services  []config.Service  `json:"services"`
 	Theme     string            `json:"theme"`
 	ThemeVars map[string]string `json:"themeVars"`
@@ -127,10 +133,13 @@ func (cs *ConfigStore) Reload() error {
 
 	// Update API config
 	cs.apiConfig = APIConfig{
-		Title:     cfg.Title,
-		UI:        cfg.UI,
-		Weather:   cfg.Weather,
-		Docker:    cfg.Docker,
+		Title:   cfg.Title,
+		UI:      cfg.UI,
+		Weather: cfg.Weather,
+		Docker: DockerAPIConfig{
+			Enabled:    cfg.Docker.IsEnabled(),
+			SocketPath: cfg.Docker.SocketPath,
+		},
 		Services:  cfg.Services,
 		Theme:     cfg.Theme,
 		ThemeVars: activeTheme.Vars,
@@ -179,10 +188,13 @@ func main() {
 	// Initialize config store
 	store := &ConfigStore{
 		apiConfig: APIConfig{
-			Title:     cfg.Title,
-			UI:        cfg.UI,
-			Weather:   cfg.Weather,
-			Docker:    cfg.Docker,
+			Title:   cfg.Title,
+			UI:      cfg.UI,
+			Weather: cfg.Weather,
+			Docker: DockerAPIConfig{
+				Enabled:    cfg.Docker.IsEnabled(),
+				SocketPath: cfg.Docker.SocketPath,
+			},
 			Services:  cfg.Services,
 			Theme:     cfg.Theme,
 			ThemeVars: activeTheme.Vars,

@@ -25,8 +25,8 @@ units = "metric" # metric (°C), imperial (°F), or standard (K)
 
 # Docker integration - shows container status
 # Mount Docker socket: -v /var/run/docker.sock:/var/run/docker.sock
+# enabled auto-detects if socket is mounted (omit to auto-detect, or set true/false)
 [docker]
-enabled = false
 socket-path = "/var/run/docker.sock"  # Default Docker socket path
 
 [[services]]

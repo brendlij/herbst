@@ -35,8 +35,22 @@ type Weather struct {
 
 // Docker holds Docker integration configuration
 type Docker struct {
-	Enabled    bool   `toml:"enabled"     json:"enabled"`
+	Enabled    *bool  `toml:"enabled"     json:"enabled"`    // Pointer to detect if explicitly set
 	SocketPath string `toml:"socket-path" json:"socketPath"`
+}
+
+// IsEnabled returns true if Docker is enabled (auto-detects if not explicitly set)
+func (d *Docker) IsEnabled() bool {
+	// If explicitly set in config, use that value
+	if d.Enabled != nil {
+		return *d.Enabled
+	}
+	// Auto-detect: check if socket exists
+	if d.SocketPath == "" {
+		d.SocketPath = "/var/run/docker.sock"
+	}
+	_, err := os.Stat(d.SocketPath)
+	return err == nil
 }
 
 // UI holds UI-related configuration
