@@ -113,18 +113,22 @@ watch(
         v-for="container in containers"
         :key="container.id"
         class="container-card"
-        :class="getStateClass(container.state)"
       >
-        <div class="container-header">
+        <div class="container-icon">
           <span class="container-state-icon">{{
             getStateIcon(container.state)
           }}</span>
+        </div>
+        <div class="container-content">
           <span class="container-name">{{ container.name }}</span>
-        </div>
-        <div class="container-details">
           <span class="container-image">{{ container.image }}</span>
-          <span class="container-status">{{ container.status }}</span>
         </div>
+        <!-- Status Line -->
+        <div
+          class="status-line"
+          :class="getStateClass(container.state)"
+          :title="container.status"
+        ></div>
       </div>
     </div>
   </div>
@@ -154,89 +158,102 @@ watch(
 }
 
 .container-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+
+  padding: 20px;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 14px 16px;
-  transition: all 0.2s ease;
-  border-left: 3px solid var(--color-border);
+  border-radius: 3em;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  /* Backdrop blur for transparent themes */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  /* Fix visual artifacts with border-radius + backdrop-filter */
+  overflow: hidden;
+  isolation: isolate;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .container-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.container-card.state-running {
-  border-left-color: #22c55e;
-}
-
-.container-card.state-stopped {
-  border-left-color: #ef4444;
-}
-
-.container-card.state-paused {
-  border-left-color: #f59e0b;
-}
-
-.container-card.state-restarting {
-  border-left-color: #3b82f6;
-}
-
-.container-header {
+.container-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  font-size: 1rem;
 }
 
-.container-state-icon {
-  font-size: 0.75rem;
-  opacity: 0.8;
-}
-
-.state-running .container-state-icon {
-  color: #22c55e;
-}
-
-.state-stopped .container-state-icon {
-  color: #ef4444;
-}
-
-.state-paused .container-state-icon {
-  color: #f59e0b;
-}
-
-.state-restarting .container-state-icon {
-  color: #3b82f6;
+.container-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
 }
 
 .container-name {
+  font-size: 1rem;
   font-weight: 600;
   color: var(--color-text);
-  font-size: 0.95rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.container-details {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
 .container-image {
   font-size: 0.8rem;
-  color: var(--color-text-muted);
+  color: var(--color-text);
+  opacity: 0.6;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.container-status {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  opacity: 0.8;
+.container-state-icon {
+  font-size: 1rem;
+}
+
+/* Status Line */
+.status-line {
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  transition: background-color 0.3s ease;
+}
+
+.status-line.state-running {
+  background-color: #86efac; /* pastel green */
+}
+
+.status-line.state-stopped {
+  background-color: #fca5a5; /* pastel red */
+}
+
+.status-line.state-paused {
+  background-color: #fcd34d; /* pastel yellow */
+}
+
+.status-line.state-restarting {
+  background-color: #93c5fd; /* pastel blue */
+}
+
+.status-line.state-unknown {
+  background-color: #94a3b8; /* gray */
 }
 </style>
