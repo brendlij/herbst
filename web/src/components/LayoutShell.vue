@@ -2,11 +2,17 @@
 import HeaderTabs from "./HeaderTabs.vue";
 import FooterBar from "./FooterBar.vue";
 import HeaderBar from "./HeaderBar.vue";
-import type { WeatherConfig } from "../types/config";
+import type { WeatherConfig, DockerConfig } from "../types/config";
 
 defineProps<{
   title: string;
   weather: WeatherConfig;
+  docker: DockerConfig;
+  activeTab: string;
+}>();
+
+const emit = defineEmits<{
+  (e: "tabChange", tab: string): void;
 }>();
 </script>
 
@@ -20,7 +26,11 @@ defineProps<{
       <HeaderBar :title="title" :weather="weather" />
 
       <!-- Tabs unter dem Header -->
-      <HeaderTabs active="services" />
+      <HeaderTabs
+        :active-tab="activeTab"
+        :docker-enabled="docker.enabled"
+        @tab-change="emit('tabChange', $event)"
+      />
 
       <main class="main">
         <slot />

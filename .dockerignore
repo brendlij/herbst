@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Build artifacts
+herbst
+herbst.exe
+web/dist
+web/node_modules
+
+# Runtime files
+runtime/
+*.log
+
+# Documentation
+docs/
+README.md
+LICENSE
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore

@@ -23,6 +23,12 @@ lat = 0.0        # Latitude (only used if location is empty)
 lon = 0.0        # Longitude (only used if location is empty)
 units = "metric" # metric (°C), imperial (°F), or standard (K)
 
+# Docker integration - shows container status
+# Mount Docker socket: -v /var/run/docker.sock:/var/run/docker.sock
+[docker]
+enabled = false
+socket-path = "/var/run/docker.sock"  # Default Docker socket path
+
 [[services]]
 name = "Home Assistant"
 url  = "https://ha.local"

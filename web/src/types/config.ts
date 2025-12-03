@@ -28,6 +28,20 @@ export type WeatherData = {
   city: string;
 };
 
+export type DockerConfig = {
+  enabled: boolean;
+  socketPath: string;
+};
+
+export type DockerContainer = {
+  id: string;
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  created: number;
+};
+
 export type UIConfig = {
   background?: BackgroundConfig;
   font?: string;
@@ -37,6 +51,7 @@ export type HerbstConfig = {
   title: string;
   ui: UIConfig;
   weather: WeatherConfig;
+  docker: DockerConfig;
   services: Service[];
   theme: string;
   themeVars: Record<string, string>;

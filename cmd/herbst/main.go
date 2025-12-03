@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -31,6 +33,7 @@ type APIConfig struct {
 	Title     string            `json:"title"`
 	UI        config.UI         `json:"ui"`
 	Weather   config.Weather    `json:"weather"`
+	Docker    config.Docker     `json:"docker"`
 	Services  []config.Service  `json:"services"`
 	Theme     string            `json:"theme"`
 	ThemeVars map[string]string `json:"themeVars"`
@@ -127,6 +130,7 @@ func (cs *ConfigStore) Reload() error {
 		Title:     cfg.Title,
 		UI:        cfg.UI,
 		Weather:   cfg.Weather,
+		Docker:    cfg.Docker,
 		Services:  cfg.Services,
 		Theme:     cfg.Theme,
 		ThemeVars: activeTheme.Vars,
@@ -178,6 +182,7 @@ func main() {
 			Title:     cfg.Title,
 			UI:        cfg.UI,
 			Weather:   cfg.Weather,
+			Docker:    cfg.Docker,
 			Services:  cfg.Services,
 			Theme:     cfg.Theme,
 			ThemeVars: activeTheme.Vars,
@@ -445,6 +450,104 @@ func main() {
 			"icon":        icon,
 			"city":        cityName,
 			"units":       weatherCfg.Units,
+		})
+	})
+
+	// API endpoint: GET /api/docker/containers
+	// Lists all Docker containers via Docker socket
+	mux.HandleFunc("/api/docker/containers", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		dockerCfg := store.Get().Docker
+		if !dockerCfg.Enabled {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"enabled": false,
+				"error":   "Docker integration not enabled",
+			})
+			return
+		}
+
+		socketPath := dockerCfg.SocketPath
+		if socketPath == "" {
+			socketPath = "/var/run/docker.sock"
+		}
+
+		// Create HTTP client that connects via Unix socket
+		client := &http.Client{
+			Transport: &http.Transport{
+				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+					return net.Dial("unix", socketPath)
+				},
+			},
+			Timeout: 10 * time.Second,
+		}
+
+		// Call Docker API
+		req, err := http.NewRequest("GET", "http://localhost/containers/json?all=true", nil)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"enabled": true,
+				"error":   "Failed to create request",
+			})
+			return
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"enabled": true,
+				"error":   fmt.Sprintf("Failed to connect to Docker: %v", err),
+			})
+			return
+		}
+		defer resp.Body.Close()
+
+		// Parse Docker API response
+		var containers []struct {
+			ID      string   `json:"Id"`
+			Names   []string `json:"Names"`
+			Image   string   `json:"Image"`
+			State   string   `json:"State"`
+			Status  string   `json:"Status"`
+			Created int64    `json:"Created"`
+		}
+
+		if err := json.NewDecoder(resp.Body).Decode(&containers); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"enabled": true,
+				"error":   "Failed to parse Docker response",
+			})
+			return
+		}
+
+		// Transform to our format
+		result := make([]map[string]interface{}, len(containers))
+		for i, c := range containers {
+			name := c.ID[:12]
+			if len(c.Names) > 0 {
+				name = strings.TrimPrefix(c.Names[0], "/")
+			}
+			result[i] = map[string]interface{}{
+				"id":      c.ID[:12],
+				"name":    name,
+				"image":   c.Image,
+				"state":   c.State,
+				"status":  c.Status,
+				"created": c.Created,
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"enabled":    true,
+			"containers": result,
 		})
 	})
 

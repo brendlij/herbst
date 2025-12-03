@@ -33,6 +33,12 @@ type Weather struct {
 	Units    string  `toml:"units"    json:"units"`
 }
 
+// Docker holds Docker integration configuration
+type Docker struct {
+	Enabled    bool   `toml:"enabled"     json:"enabled"`
+	SocketPath string `toml:"socket-path" json:"socketPath"`
+}
+
 // UI holds UI-related configuration
 type UI struct {
 	Background Background `toml:"background" json:"background"`
@@ -53,6 +59,7 @@ type Config struct {
 	Theme    string    `toml:"theme"    json:"theme"`
 	UI       UI        `toml:"ui"       json:"ui"`
 	Weather  Weather   `toml:"weather"  json:"weather"`
+	Docker   Docker    `toml:"docker"   json:"docker"`
 	Services []Service `toml:"services" json:"services"`
 }
 
@@ -114,6 +121,9 @@ func expandEnvVars(cfg *Config) {
 	// Expand in Weather config
 	cfg.Weather.APIKey = expand(cfg.Weather.APIKey)
 	cfg.Weather.Location = expand(cfg.Weather.Location)
+
+	// Expand in Docker config
+	cfg.Docker.SocketPath = expand(cfg.Docker.SocketPath)
 
 	// Expand in UI config
 	cfg.UI.Background.Image = expand(cfg.UI.Background.Image)

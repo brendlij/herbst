@@ -1,6 +1,31 @@
+<script setup lang="ts">
+defineProps<{
+  activeTab: string;
+  dockerEnabled: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: "tabChange", tab: string): void;
+}>();
+</script>
+
 <template>
   <nav class="tabs">
-    <div class="tab active">Services</div>
+    <div
+      class="tab"
+      :class="{ active: activeTab === 'services' }"
+      @click="emit('tabChange', 'services')"
+    >
+      Services
+    </div>
+    <div
+      v-if="dockerEnabled"
+      class="tab"
+      :class="{ active: activeTab === 'docker' }"
+      @click="emit('tabChange', 'docker')"
+    >
+      Docker
+    </div>
   </nav>
 </template>
 
@@ -9,6 +34,7 @@
   display: flex;
   justify-content: center;
   margin-top: 12px;
+  gap: 8px;
 
   /* Tabs sollen schweben */
   padding: 4px 0;
@@ -20,9 +46,15 @@
   font-weight: 500;
   color: var(--color-text-muted);
   border-radius: 10px;
-  cursor: default;
+  cursor: pointer;
   position: relative;
   transition: 0.2s ease;
+  user-select: none;
+}
+
+.tab:hover {
+  color: var(--color-text);
+  background: var(--color-surface);
 }
 
 /* ACTIVE TAB */

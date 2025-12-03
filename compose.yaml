@@ -1,0 +1,23 @@
+services:
+  herbst:
+    build: .
+    # Or use pre-built image:
+    # image: ghcr.io/brendlij/herbst:latest
+    container_name: herbst
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # Config directory (contains config.toml and themes.toml)
+      - ./config:/app/config
+      # Assets directory (for custom icons, backgrounds, etc.)
+      - ./assets:/app/assets
+      # Theme Directory (for default and custom themes)
+      - ./themes:/app/themes
+      # Docker socket (required for Docker tab)
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - TZ=Europe/Berlin
+      # Optional: Add your environment variables for configuration file here
+      # - OPENWEATHER_API_KEY=your-api-key
+      # - HOMEASSISTANT_URL=http://homeassistant.local:8123

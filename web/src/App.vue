@@ -4,10 +4,12 @@ import type { HerbstConfig } from "./types/config";
 import { applyTheme } from "./lib/theme";
 import LayoutShell from "./components/LayoutShell.vue";
 import ServiceGrid from "./components/ServiceGrid.vue";
+import DockerGrid from "./components/DockerGrid.vue";
 
 const config = ref<HerbstConfig | null>(null);
 const loading = ref(true);
 const error = ref<string | null>(null);
+const activeTab = ref("services");
 
 let eventSource: EventSource | null = null;
 
@@ -117,8 +119,15 @@ onUnmounted(() => {
       v-else-if="config"
       :title="config.title"
       :weather="config.weather"
+      :docker="config.docker"
+      :active-tab="activeTab"
+      @tab-change="activeTab = $event"
     >
-      <ServiceGrid :services="config.services" />
+      <ServiceGrid
+        v-if="activeTab === 'services'"
+        :services="config.services"
+      />
+      <DockerGrid v-else-if="activeTab === 'docker'" :docker="config.docker" />
     </LayoutShell>
   </div>
 </template>
