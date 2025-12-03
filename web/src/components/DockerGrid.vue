@@ -53,26 +53,10 @@ function getStateClass(state: string): string {
   }
 }
 
-function getStateIcon(state: string): string {
-  switch (state.toLowerCase()) {
-    case "running":
-      return "▶";
-    case "exited":
-    case "dead":
-      return "■";
-    case "paused":
-      return "⏸";
-    case "restarting":
-      return "↻";
-    default:
-      return "?";
-  }
-}
-
 onMounted(() => {
   fetchContainers();
-  // Refresh every 30 seconds
-  refreshInterval = setInterval(fetchContainers, 30000);
+  // Refresh every 5 seconds for live updates
+  refreshInterval = setInterval(fetchContainers, 5000);
 });
 
 onUnmounted(() => {
@@ -114,14 +98,13 @@ watch(
         :key="container.id"
         class="container-card"
       >
-        <div class="container-icon">
-          <span class="container-state-icon">{{
-            getStateIcon(container.state)
-          }}</span>
-        </div>
+        <div
+          class="container-indicator"
+          :class="getStateClass(container.state)"
+        ></div>
         <div class="container-content">
           <span class="container-name">{{ container.name }}</span>
-          <span class="container-image">{{ container.image }}</span>
+          <span class="container-status">{{ container.status }}</span>
         </div>
         <!-- Status Line -->
         <div
@@ -161,7 +144,7 @@ watch(
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   position: relative;
 
   padding: 20px;
@@ -185,16 +168,45 @@ watch(
   transform: translateY(-2px);
 }
 
-.container-icon {
-  width: 40px;
-  height: 40px;
+/* Minimal status indicator dot */
+.container-indicator {
+  width: 10px;
+  height: 10px;
   flex-shrink: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  font-size: 1rem;
+  border-radius: 50%;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.container-indicator.state-running {
+  background-color: #86efac;
+  box-shadow: 0 0 8px rgba(134, 239, 172, 0.5);
+}
+
+.container-indicator.state-stopped {
+  background-color: #fca5a5;
+}
+
+.container-indicator.state-paused {
+  background-color: #fcd34d;
+}
+
+.container-indicator.state-restarting {
+  background-color: #93c5fd;
+  animation: pulse-indicator 1.5s ease-in-out infinite;
+}
+
+.container-indicator.state-unknown {
+  background-color: #94a3b8;
+}
+
+@keyframes pulse-indicator {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .container-content {
@@ -213,17 +225,13 @@ watch(
   white-space: nowrap;
 }
 
-.container-image {
+.container-status {
   font-size: 0.8rem;
   color: var(--color-text);
   opacity: 0.6;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.container-state-icon {
-  font-size: 1rem;
 }
 
 /* Status Line */

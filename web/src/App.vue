@@ -9,9 +9,16 @@ import DockerGrid from "./components/DockerGrid.vue";
 const config = ref<HerbstConfig | null>(null);
 const loading = ref(true);
 const error = ref<string | null>(null);
-const activeTab = ref("services");
+
+// Persist active tab in localStorage
+const activeTab = ref(localStorage.getItem("herbst-active-tab") || "services");
 
 let eventSource: EventSource | null = null;
+
+// Save tab to localStorage when it changes
+watch(activeTab, (newTab) => {
+  localStorage.setItem("herbst-active-tab", newTab);
+});
 
 async function loadConfig() {
   try {
