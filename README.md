@@ -1,4 +1,4 @@
-🍂 herbst
+# ![](/docs/images/logoherbstfarben.svg) herbst
 
 _(pronounced “herpst” — German for “autumn”)_
 
