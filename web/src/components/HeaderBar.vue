@@ -97,8 +97,6 @@ onMounted(() => {
 }
 
 .logo-icon {
-  background-color: var(--color-accent);
-  border-radius: 50%;
   width: 64px;
   height: 64px;
   display: flex;
@@ -112,7 +110,7 @@ onMounted(() => {
 
 .title {
   font-size: 1.3rem;
-  font-weight: 400;
+  font-weight: 600;
   color: var(--color-text);
 }
 

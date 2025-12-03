@@ -3,6 +3,7 @@ package themes
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"herbst/internal/util"
 
@@ -63,14 +64,22 @@ func EnsureAndLoadThemes() (*ThemeFile, string, error) {
 	return &tf, absPath, nil
 }
 
-// ActiveTheme returns the theme with the given name, or "default" if not found
+// ActiveTheme returns the theme with the given key or display name, or "default" if not found
 func (tf *ThemeFile) ActiveTheme(name string) Theme {
 	if name == "" {
 		name = "default"
 	}
 
+	// First, try to find by key (e.g., "autumn_mist")
 	if theme, ok := tf.Themes[name]; ok {
 		return theme
+	}
+
+	// Second, try to find by display name (e.g., "Autumn Mist")
+	for _, theme := range tf.Themes {
+		if strings.EqualFold(theme.Name, name) {
+			return theme
+		}
 	}
 
 	// Fall back to default theme
