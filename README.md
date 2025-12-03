@@ -2,7 +2,7 @@
   <img src="/docs/images/logoherbstfarben.svg" alt="herbst logo" width="128" />
 </p>
 
-<h1 align="center">herbst</h1>
+<h1 align="center">Herbst</h1>
 
 <p align="center"><i>(pronounced “herpst” — German for “autumn”)</i></p>
 
