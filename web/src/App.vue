@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, watch, onMounted, onUnmounted } from "vue";
 import type { HerbstConfig } from "./types/config";
 import { applyTheme } from "./lib/theme";
 import LayoutShell from "./components/LayoutShell.vue";
@@ -49,6 +49,42 @@ function setupLiveReload() {
 onMounted(() => {
   loadConfig();
   setupLiveReload();
+
+  // Watch for font changes
+  watch(
+    () => config.value?.ui.font,
+    (font) => {
+      if (font) {
+        document.body.style.setProperty("--font", font);
+      } else {
+        document.body.style.removeProperty("--font");
+      }
+    },
+    { immediate: true }
+  );
+
+  watch(
+    () => config.value?.ui.background,
+    (background) => {
+      console.log("Background config:", JSON.stringify(background));
+      if (background && background.image) {
+        console.log("Setting bg-image to:", background.image);
+        document.body.style.setProperty(
+          "--bg-image",
+          `url(${background.image})`
+        );
+        document.body.style.setProperty(
+          "--bg-blur",
+          `${background.blur || 0}px`
+        );
+      } else {
+        console.log("No background image, removing vars");
+        document.body.style.removeProperty("--bg-image");
+        document.body.style.removeProperty("--bg-blur");
+      }
+    },
+    { immediate: true, deep: true }
+  );
 });
 
 onUnmounted(() => {
@@ -77,11 +113,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Ready State -->
-    <LayoutShell
-      v-else-if="config"
-      :title="config.title"
-      :background="config.ui.background"
-    >
+    <LayoutShell v-else-if="config" :title="config.title">
       <ServiceGrid :services="config.services" />
     </LayoutShell>
   </div>
@@ -90,6 +122,8 @@ onUnmounted(() => {
 <style scoped>
 .app {
   min-height: 100vh;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .state-container {

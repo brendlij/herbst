@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -199,6 +200,56 @@ func main() {
 			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 			return
 		}
+	})
+
+	// API endpoint: GET /api/health?url=<service-url>
+	// Checks if a service URL is reachable
+	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		targetURL := r.URL.Query().Get("url")
+		if targetURL == "" {
+			http.Error(w, "Missing 'url' parameter", http.StatusBadRequest)
+			return
+		}
+
+		// Create a client with timeout and skip TLS verification (for self-signed certs)
+		client := &http.Client{
+			Timeout: 5 * time.Second,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		}
+
+		// Try HEAD first, fall back to GET if it fails
+		req, err := http.NewRequest(http.MethodHead, targetURL, nil)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{"online": false, "error": err.Error()})
+			return
+		}
+
+		resp, err := client.Do(req)
+		
+		// If HEAD fails or returns 405 (Method Not Allowed), try GET
+		if err != nil || (resp != nil && resp.StatusCode == 405) {
+			if resp != nil {
+				resp.Body.Close()
+			}
+			req, _ = http.NewRequest(http.MethodGet, targetURL, nil)
+			resp, err = client.Do(req)
+		}
+
+		online := err == nil && resp != nil && resp.StatusCode < 500
+		if resp != nil {
+			resp.Body.Close()
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"online": online})
 	})
 
 	// SSE endpoint for live reload

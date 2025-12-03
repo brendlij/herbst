@@ -1,52 +1,54 @@
 <script setup lang="ts">
+import HeaderTabs from "./HeaderTabs.vue";
+import FooterBar from "./FooterBar.vue";
+import HeaderBar from "./HeaderBar.vue";
 import Logo from "./Logo.vue";
+
 defineProps<{
   title: string;
-  background?: string;
 }>();
 </script>
 
 <template>
-  <div
-    class="layout-shell"
-    :style="background ? { backgroundImage: `url(${background})` } : undefined"
-  >
-    <div class="layout-overlay" v-if="background"></div>
+  <div class="layout-shell">
     <div class="layout-content">
-      <header class="header">
+      <!-- <header class="header">
         <Logo size="120" />
         <h1>{{ title }}</h1>
-      </header>
+      </header> -->
+      <HeaderBar :title="title" />
+
+      <!-- Tabs unter dem Header -->
+      <HeaderTabs active="services" />
+
       <main class="main">
-        <slot></slot>
+        <slot />
       </main>
     </div>
+    <footer class="footer">
+      <FooterBar />
+    </footer>
   </div>
 </template>
 
 <style scoped>
 .layout-shell {
   min-height: 100vh;
-  position: relative;
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-}
-
-.layout-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(2px);
-  z-index: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .layout-content {
+  flex: 1;
   position: relative;
   z-index: 1;
-  max-width: 1100px;
-  margin: 0 auto;
   padding: var(--spacing, 20px);
+}
+
+.footer {
+  margin-top: auto;
+  padding: var(--spacing, 20px);
+  padding-top: 0;
 }
 
 .header {
@@ -64,5 +66,6 @@ defineProps<{
 
 .main {
   padding-bottom: 2rem;
+  padding-top: 2rem;
 }
 </style>

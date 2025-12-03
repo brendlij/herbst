@@ -2,10 +2,17 @@ export type Service = {
   name: string;
   url: string;
   icon?: string;
+  onlineBadge?: boolean;
+};
+
+export type BackgroundConfig = {
+  image?: string;
+  blur?: number;
 };
 
 export type UIConfig = {
-  background?: string;
+  background?: BackgroundConfig;
+  font?: string;
 };
 
 export type HerbstConfig = {

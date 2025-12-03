@@ -16,16 +16,24 @@ const (
 	configFilename     = "config.toml"
 )
 
+// Background holds background-related configuration
+type Background struct {
+	Image string  `toml:"image" json:"image"`
+	Blur  float64 `toml:"blur"  json:"blur"`
+}
+
 // UI holds UI-related configuration
 type UI struct {
-	Background string `toml:"background" json:"background"`
+	Background Background `toml:"background" json:"background"`
+	Font       string     `toml:"font"       json:"font"`
 }
 
 // Service represents a dashboard service entry
 type Service struct {
-	Name string `toml:"name" json:"name"`
-	URL  string `toml:"url"  json:"url"`
-	Icon string `toml:"icon" json:"icon"`
+	Name        string `toml:"name"         json:"name"`
+	URL         string `toml:"url"          json:"url"`
+	Icon        string `toml:"icon"         json:"icon"`
+	OnlineBadge bool   `toml:"online-badge" json:"onlineBadge"`
 }
 
 // Config is the main configuration structure

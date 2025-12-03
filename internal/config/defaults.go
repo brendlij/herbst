@@ -5,15 +5,21 @@ const DefaultConfigTOML = `title = "herbst – homelab"
 theme = "default"
 
 [ui]
-background = ""
+font = ""
+
+[ui.background]
+image = ""
+blur = 0
 
 [[services]]
 name = "Home Assistant"
 url  = "https://ha.local"
 icon = ""
+online-badge = true
 
 [[services]]
 name = "NAS"
 url  = "https://nas.local"
 icon = ""
+online-badge = true
 `
