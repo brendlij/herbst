@@ -113,7 +113,11 @@ onUnmounted(() => {
     </div>
 
     <!-- Ready State -->
-    <LayoutShell v-else-if="config" :title="config.title">
+    <LayoutShell
+      v-else-if="config"
+      :title="config.title"
+      :weather="config.weather"
+    >
       <ServiceGrid :services="config.services" />
     </LayoutShell>
   </div>

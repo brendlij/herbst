@@ -2,10 +2,11 @@
 import HeaderTabs from "./HeaderTabs.vue";
 import FooterBar from "./FooterBar.vue";
 import HeaderBar from "./HeaderBar.vue";
-import Logo from "./Logo.vue";
+import type { WeatherConfig } from "../types/config";
 
 defineProps<{
   title: string;
+  weather: WeatherConfig;
 }>();
 </script>
 
@@ -16,7 +17,7 @@ defineProps<{
         <Logo size="120" />
         <h1>{{ title }}</h1>
       </header> -->
-      <HeaderBar :title="title" />
+      <HeaderBar :title="title" :weather="weather" />
 
       <!-- Tabs unter dem Header -->
       <HeaderTabs active="services" />

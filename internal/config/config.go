@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"herbst/internal/util"
 
@@ -20,6 +21,16 @@ const (
 type Background struct {
 	Image string  `toml:"image" json:"image"`
 	Blur  float64 `toml:"blur"  json:"blur"`
+}
+
+// Weather holds weather-related configuration
+type Weather struct {
+	Enabled  bool    `toml:"enabled"  json:"enabled"`
+	APIKey   string  `toml:"api-key"  json:"apiKey"`
+	Location string  `toml:"location" json:"location"` // City name, "zip:CODE,COUNTRY", or empty for lat/lon
+	Lat      float64 `toml:"lat"      json:"lat"`
+	Lon      float64 `toml:"lon"      json:"lon"`
+	Units    string  `toml:"units"    json:"units"`
 }
 
 // UI holds UI-related configuration
@@ -41,6 +52,7 @@ type Config struct {
 	Title    string    `toml:"title"    json:"title"`
 	Theme    string    `toml:"theme"    json:"theme"`
 	UI       UI        `toml:"ui"       json:"ui"`
+	Weather  Weather   `toml:"weather"  json:"weather"`
 	Services []Service `toml:"services" json:"services"`
 }
 
@@ -76,6 +88,45 @@ func EnsureAndLoadConfig() (*Config, string, error) {
 		return nil, "", err
 	}
 
+	// Expand environment variables in config values
+	expandEnvVars(&cfg)
+
 	absPath, _ := filepath.Abs(configPath)
 	return &cfg, absPath, nil
+}
+
+// expandEnvVars expands ${VAR_NAME} references in config string values
+func expandEnvVars(cfg *Config) {
+	envVarRegex := regexp.MustCompile(`\$\{([^}]+)\}`)
+
+	expand := func(s string) string {
+		return envVarRegex.ReplaceAllStringFunc(s, func(match string) string {
+			// Extract variable name from ${VAR_NAME}
+			varName := envVarRegex.FindStringSubmatch(match)[1]
+			if value, exists := os.LookupEnv(varName); exists {
+				return value
+			}
+			// Return original if env var not found
+			return match
+		})
+	}
+
+	// Expand in Weather config
+	cfg.Weather.APIKey = expand(cfg.Weather.APIKey)
+	cfg.Weather.Location = expand(cfg.Weather.Location)
+
+	// Expand in UI config
+	cfg.UI.Background.Image = expand(cfg.UI.Background.Image)
+	cfg.UI.Font = expand(cfg.UI.Font)
+
+	// Expand in Services
+	for i := range cfg.Services {
+		cfg.Services[i].Name = expand(cfg.Services[i].Name)
+		cfg.Services[i].URL = expand(cfg.Services[i].URL)
+		cfg.Services[i].Icon = expand(cfg.Services[i].Icon)
+	}
+
+	// Expand title and theme
+	cfg.Title = expand(cfg.Title)
+	cfg.Theme = expand(cfg.Theme)
 }

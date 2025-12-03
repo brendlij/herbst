@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -29,6 +30,7 @@ const (
 type APIConfig struct {
 	Title     string            `json:"title"`
 	UI        config.UI         `json:"ui"`
+	Weather   config.Weather    `json:"weather"`
 	Services  []config.Service  `json:"services"`
 	Theme     string            `json:"theme"`
 	ThemeVars map[string]string `json:"themeVars"`
@@ -124,6 +126,7 @@ func (cs *ConfigStore) Reload() error {
 	cs.apiConfig = APIConfig{
 		Title:     cfg.Title,
 		UI:        cfg.UI,
+		Weather:   cfg.Weather,
 		Services:  cfg.Services,
 		Theme:     cfg.Theme,
 		ThemeVars: activeTheme.Vars,
@@ -174,6 +177,7 @@ func main() {
 		apiConfig: APIConfig{
 			Title:     cfg.Title,
 			UI:        cfg.UI,
+			Weather:   cfg.Weather,
 			Services:  cfg.Services,
 			Theme:     cfg.Theme,
 			ThemeVars: activeTheme.Vars,
@@ -250,6 +254,198 @@ func main() {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{"online": online})
+	})
+
+	// API endpoint: GET /api/weather
+	// Fetches current weather from OpenWeatherMap
+	mux.HandleFunc("/api/weather", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		weatherCfg := store.Get().Weather
+		if !weatherCfg.Enabled || weatherCfg.APIKey == "" {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"enabled": false,
+				"error":   "Weather not configured",
+			})
+			return
+		}
+
+		client := &http.Client{Timeout: 10 * time.Second}
+		var lat, lon float64
+		var locationName string
+
+		// Determine coordinates based on location config
+		if weatherCfg.Location != "" {
+			location := strings.TrimSpace(weatherCfg.Location)
+			
+			// Auto-detect if it's a zip code: starts with digits or has "zip:" prefix
+			isZipCode := strings.HasPrefix(strings.ToLower(location), "zip:")
+			if !isZipCode && len(location) > 0 {
+				// Check if it starts with a digit (likely a zip code like "79650,DE" or "10001,US")
+				firstChar := location[0]
+				isZipCode = firstChar >= '0' && firstChar <= '9'
+			}
+			
+			if isZipCode {
+				// Remove "zip:" prefix if present
+				zipPart := strings.TrimPrefix(location, "zip:")
+				zipPart = strings.TrimPrefix(zipPart, "ZIP:")
+				zipPart = strings.TrimSpace(zipPart)
+				
+				geoURL := fmt.Sprintf(
+					"http://api.openweathermap.org/geo/1.0/zip?zip=%s&appid=%s",
+					zipPart,
+					weatherCfg.APIKey,
+				)
+
+				resp, err := client.Get(geoURL)
+				if err != nil {
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(map[string]interface{}{
+						"enabled": true,
+						"error":   "Failed to geocode zip code",
+					})
+					return
+				}
+				defer resp.Body.Close()
+
+				var zipResp struct {
+					Lat  float64 `json:"lat"`
+					Lon  float64 `json:"lon"`
+					Name string  `json:"name"`
+				}
+				if err := json.NewDecoder(resp.Body).Decode(&zipResp); err != nil {
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(map[string]interface{}{
+						"enabled": true,
+						"error":   "Failed to parse zip code response",
+					})
+					return
+				}
+				lat, lon = zipResp.Lat, zipResp.Lon
+				locationName = zipResp.Name
+			} else {
+				// It's a city name
+				geoURL := fmt.Sprintf(
+					"http://api.openweathermap.org/geo/1.0/direct?q=%s&limit=1&appid=%s",
+					weatherCfg.Location,
+					weatherCfg.APIKey,
+				)
+
+				resp, err := client.Get(geoURL)
+				if err != nil {
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(map[string]interface{}{
+						"enabled": true,
+						"error":   "Failed to geocode city name",
+					})
+					return
+				}
+				defer resp.Body.Close()
+
+				var geoResp []struct {
+					Lat     float64 `json:"lat"`
+					Lon     float64 `json:"lon"`
+					Name    string  `json:"name"`
+					Country string  `json:"country"`
+				}
+				if err := json.NewDecoder(resp.Body).Decode(&geoResp); err != nil || len(geoResp) == 0 {
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(map[string]interface{}{
+						"enabled": true,
+						"error":   "City not found",
+					})
+					return
+				}
+				lat, lon = geoResp[0].Lat, geoResp[0].Lon
+				locationName = geoResp[0].Name
+			}
+		} else {
+			// Use direct coordinates from config
+			lat, lon = weatherCfg.Lat, weatherCfg.Lon
+		}
+
+		// Build OpenWeatherMap API URL
+		apiURL := fmt.Sprintf(
+			"https://api.openweathermap.org/data/2.5/weather?lat=%f&lon=%f&appid=%s&units=%s",
+			lat,
+			lon,
+			weatherCfg.APIKey,
+			weatherCfg.Units,
+		)
+
+		resp, err := client.Get(apiURL)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"enabled": true,
+				"error":   "Failed to fetch weather data",
+			})
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"enabled": true,
+				"error":   fmt.Sprintf("Weather API returned status %d", resp.StatusCode),
+			})
+			return
+		}
+
+		// Parse OpenWeatherMap response
+		var owmResp struct {
+			Main struct {
+				Temp      float64 `json:"temp"`
+				FeelsLike float64 `json:"feels_like"`
+				Humidity  int     `json:"humidity"`
+			} `json:"main"`
+			Weather []struct {
+				Main        string `json:"main"`
+				Description string `json:"description"`
+				Icon        string `json:"icon"`
+			} `json:"weather"`
+			Name string `json:"name"`
+		}
+
+		if err := json.NewDecoder(resp.Body).Decode(&owmResp); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"enabled": true,
+				"error":   "Failed to parse weather data",
+			})
+			return
+		}
+
+		// Use geocoded location name, fall back to API response
+		cityName := locationName
+		if cityName == "" {
+			cityName = owmResp.Name
+		}
+
+		description := ""
+		icon := ""
+		if len(owmResp.Weather) > 0 {
+			description = owmResp.Weather[0].Description
+			icon = owmResp.Weather[0].Icon
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"enabled":     true,
+			"temp":        owmResp.Main.Temp,
+			"feelsLike":   owmResp.Main.FeelsLike,
+			"humidity":    owmResp.Main.Humidity,
+			"description": description,
+			"icon":        icon,
+			"city":        cityName,
+			"units":       weatherCfg.Units,
+		})
 	})
 
 	// SSE endpoint for live reload

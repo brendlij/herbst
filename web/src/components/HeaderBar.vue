@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import Logo from "./Logo.vue";
+import type { WeatherConfig } from "../types/config";
 
-defineProps<{
+const props = defineProps<{
   title: string;
+  weather: WeatherConfig;
 }>();
 
 const time = ref("");
@@ -12,6 +14,19 @@ const cpuLoad = ref("0%");
 const uptime = ref("0h");
 const isOnline = ref(true);
 const use24h = ref(true);
+
+// Weather state
+const weatherData = ref<{
+  temp: number;
+  feelsLike: number;
+  humidity: number;
+  description: string;
+  icon: string;
+  city: string;
+  units: string;
+} | null>(null);
+const weatherError = ref<string | null>(null);
+let weatherInterval: ReturnType<typeof setInterval> | null = null;
 
 function updateClock() {
   const now = new Date();
@@ -41,11 +56,75 @@ function updateSystemInfo() {
   uptime.value = `${Math.round(Math.random() * 48)}h`;
 }
 
+async function fetchWeather() {
+  try {
+    const response = await fetch("/api/weather");
+    const data = await response.json();
+
+    if (data.enabled && !data.error) {
+      weatherData.value = {
+        temp: data.temp,
+        feelsLike: data.feelsLike,
+        humidity: data.humidity,
+        description: data.description,
+        icon: data.icon,
+        city: data.city,
+        units: data.units,
+      };
+      weatherError.value = null;
+    } else if (data.error) {
+      weatherError.value = data.error;
+      weatherData.value = null;
+    }
+  } catch (err) {
+    weatherError.value = "Failed to fetch weather";
+    weatherData.value = null;
+  }
+}
+
+function getWeatherIconUrl(iconCode: string): string {
+  return `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+}
+
+function formatTemp(temp: number, units: string): string {
+  const rounded = Math.round(temp);
+  switch (units) {
+    case "metric":
+      return `${rounded}°C`;
+    case "imperial":
+      return `${rounded}°F`;
+    default:
+      return `${rounded}K`;
+  }
+}
+
 onMounted(() => {
   updateClock();
   updateSystemInfo();
   setInterval(updateClock, 1000);
   setInterval(updateSystemInfo, 5000);
+
+  // Fetch weather immediately and then every hour
+  fetchWeather();
+  weatherInterval = setInterval(fetchWeather, 60 * 60 * 1000); // 1 hour
+});
+
+// Refetch weather when config changes (location, units, etc.)
+watch(
+  () => [props.weather.location, props.weather.units, props.weather.enabled],
+  () => {
+    if (props.weather.enabled) {
+      fetchWeather();
+    } else {
+      weatherData.value = null;
+    }
+  }
+);
+
+onUnmounted(() => {
+  if (weatherInterval) {
+    clearInterval(weatherInterval);
+  }
 });
 </script>
 
@@ -59,6 +138,20 @@ onMounted(() => {
     </div>
 
     <div class="status-bar">
+      <!-- Weather -->
+      <div v-if="weatherData" class="weather-info">
+        <img
+          :src="getWeatherIconUrl(weatherData.icon)"
+          :alt="weatherData.description"
+          class="weather-icon"
+        />
+        <span class="weather-temp">{{
+          formatTemp(weatherData.temp, weatherData.units)
+        }}</span>
+        <span class="weather-divider">·</span>
+        <span class="weather-city">{{ weatherData.city }}</span>
+      </div>
+
       <!-- Online Badge -->
       <span class="dot" :class="{ online: isOnline }"></span>
 
@@ -152,5 +245,36 @@ onMounted(() => {
   color: var(--color-text-muted);
   font-size: 0.78rem;
   opacity: 0.8;
+}
+
+.weather-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 8px;
+  border-right: 1px solid var(--color-border);
+  margin-right: 4px;
+}
+
+.weather-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  margin: -4px;
+}
+
+.weather-temp {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.weather-divider {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.weather-city {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
 }
 </style>
