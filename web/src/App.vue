@@ -1,25 +1,43 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from "vue";
+import { ref, watch, onMounted, onUnmounted, provide } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import type { HerbstConfig } from "./types/config";
 import { applyTheme } from "./lib/theme";
 import LayoutShell from "./components/LayoutShell.vue";
-import ServiceGrid from "./components/ServiceGrid.vue";
-import DockerGrid from "./components/DockerGrid.vue";
+
+const route = useRoute();
+const router = useRouter();
 
 const config = ref<HerbstConfig | null>(null);
 const loading = ref(true);
 const error = ref<string | null>(null);
-
-// Persist active tab in localStorage
-const activeTab = ref(localStorage.getItem("herbst-active-tab") || "services");
 const searchQuery = ref("");
+
+// Provide config and searchQuery to child components/views
+provide("config", config);
+provide("searchQuery", searchQuery);
 
 let eventSource: EventSource | null = null;
 
-// Save tab to localStorage when it changes
-watch(activeTab, (newTab) => {
-  localStorage.setItem("herbst-active-tab", newTab);
-});
+// Compute active tab from route
+const activeTab = ref(route.name === "docker" ? "docker" : "services");
+
+// Watch route changes to update activeTab
+watch(
+  () => route.name,
+  (name) => {
+    activeTab.value = name === "docker" ? "docker" : "services";
+  }
+);
+
+// Handle tab change by navigating
+function handleTabChange(tab: string) {
+  if (tab === "docker") {
+    router.push({ name: "docker" });
+  } else {
+    router.push({ name: "services" });
+  }
+}
 
 async function loadConfig() {
   try {
@@ -133,15 +151,10 @@ onUnmounted(() => {
       :weather="config.weather"
       :docker="config.docker"
       :active-tab="activeTab"
-      @tab-change="activeTab = $event"
+      @tab-change="handleTabChange"
       @search="searchQuery = $event"
     >
-      <ServiceGrid
-        v-if="activeTab === 'services'"
-        :services="config.services"
-        :search-query="searchQuery"
-      />
-      <DockerGrid v-else-if="activeTab === 'docker'" :docker="config.docker" />
+      <router-view />
     </LayoutShell>
   </div>
 </template>
