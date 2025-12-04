@@ -163,7 +163,8 @@ onUnmounted(() => {
         :class="{ active: activeTab === 'docker' }"
         @click="emit('tabChange', 'docker')"
       >
-        Docker
+        <div>Docker</div>
+        <div class="tab-subtitle">Local</div>
       </div>
     </nav>
 
@@ -253,6 +254,17 @@ onUnmounted(() => {
   height: 2px;
   background: var(--color-accent);
   border-radius: 4px;
+}
+
+.tab-subtitle {
+  position: absolute;
+  top: 27px;
+  font-size: 0.6rem;
+  color: var(--color-text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .header-right {
