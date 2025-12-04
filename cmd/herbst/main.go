@@ -716,12 +716,34 @@ func main() {
 	}
 
 	// Serve frontend (Vue + Vite build)
+	// Serve frontend (Vue + Vite build)
 	distPath := filepath.Join("web", "dist")
 	if _, err := os.Stat(distPath); err != nil {
 		log.Printf("Warning: dist folder missing: %s - frontend won't be served", distPath)
 	} else {
 		log.Printf("Serving frontend from: %s", distPath)
-		mux.Handle("/", http.FileServer(http.Dir(distPath)))
+
+		fs := http.FileServer(http.Dir(distPath))
+
+		// SPA-Handler mit Fallback auf index.html
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			// API & static sollen NICHT vom SPA gehandlet werden
+			if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/static/") {
+				http.NotFound(w, r)
+				return
+			}
+
+			// Pfad im dist-Ordner prüfen
+			requestPath := filepath.Join(distPath, filepath.Clean(r.URL.Path))
+			if info, err := os.Stat(requestPath); err == nil && !info.IsDir() {
+				// Datei existiert -> normal ausliefern
+				fs.ServeHTTP(w, r)
+				return
+			}
+
+			// Fallback: index.html für SPA-Routen wie /docker, /docker-nodes, ...
+			http.ServeFile(w, r, filepath.Join(distPath, "index.html"))
+		})
 	}
 
 	log.Println("herbst running at http://localhost:8080")
