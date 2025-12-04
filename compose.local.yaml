@@ -1,6 +1,9 @@
 services:
   herbst:
-    image: ghcr.io/brendlij/herbst:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+
     container_name: herbst
     restart: unless-stopped
     # Run as your user (UID:GID) so config files are owned by you, not root
