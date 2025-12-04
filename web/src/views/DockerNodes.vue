@@ -1,17 +1,28 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
 
+interface DockerContainer {
+  id: string;
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  created: number;
+}
+
 interface DockerAgent {
   name: string;
   token: string;
   connected: boolean;
   lastSeen: string | null;
-  containers: Array<{ name: string; image: string; state: string }>;
+  containers: DockerContainer[];
 }
 
 const agents = ref<DockerAgent[]>([]);
 const loading = ref(true);
 const serverHost = ref(window.location.host);
+const copiedAgent = ref<string | null>(null);
+const singleLineMode = ref<Record<string, boolean>>({});
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 
 async function loadAgents() {
@@ -31,16 +42,46 @@ async function loadAgents() {
   }
 }
 
-function copyCommand(agent: DockerAgent) {
-  const cmd = `docker run -d \\
+function getCommand(agent: DockerAgent, singleLine: boolean): string {
+  if (singleLine) {
+    return `docker run -d --name herbst-docker-agent -v /var/run/docker.sock:/var/run/docker.sock -e HERBST_URL="ws://${serverHost.value}/api/agents/ws" -e HERBST_TOKEN="${agent.token}" -e NODE_NAME="${agent.name}" ghcr.io/brendlij/herbst-docker-agent:latest`;
+  }
+  return `docker run -d \\
   --name herbst-docker-agent \\
   -v /var/run/docker.sock:/var/run/docker.sock \\
   -e HERBST_URL="ws://${serverHost.value}/api/agents/ws" \\
   -e HERBST_TOKEN="${agent.token}" \\
   -e NODE_NAME="${agent.name}" \\
   ghcr.io/brendlij/herbst-docker-agent:latest`;
+}
 
+function copyCommand(agent: DockerAgent) {
+  const cmd = getCommand(agent, singleLineMode.value[agent.name] || false);
   navigator.clipboard.writeText(cmd);
+  copiedAgent.value = agent.name;
+  setTimeout(() => {
+    copiedAgent.value = null;
+  }, 2000);
+}
+
+function toggleSingleLine(agentName: string) {
+  singleLineMode.value[agentName] = !singleLineMode.value[agentName];
+}
+
+function getStateClass(state: string): string {
+  switch (state.toLowerCase()) {
+    case "running":
+      return "state-running";
+    case "exited":
+    case "dead":
+      return "state-stopped";
+    case "paused":
+      return "state-paused";
+    case "restarting":
+      return "state-restarting";
+    default:
+      return "state-unknown";
+  }
 }
 
 onMounted(() => {
@@ -93,21 +134,34 @@ token = "your-secret-token"</pre
 
         <!-- Setup instructions for disconnected agents -->
         <div v-if="!agent.connected" class="setup-section">
-          <p class="setup-title">Run this command on your Docker host:</p>
+          <div class="setup-header">
+            <p class="setup-title">Run this command on your Docker host:</p>
+            <label class="single-line-toggle">
+              <input
+                type="checkbox"
+                :checked="singleLineMode[agent.name]"
+                @change="toggleSingleLine(agent.name)"
+              />
+              Single line
+            </label>
+          </div>
 
-          <pre class="command-block">
-docker run -d \
-  --name herbst-docker-agent \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -e HERBST_URL="ws://{{ serverHost }}/api/agents/ws" \
-  -e HERBST_TOKEN="{{ agent.token }}" \
-  -e NODE_NAME="{{ agent.name }}" \
-  ghcr.io/brendlij/herbst-docker-agent:latest</pre
+          <pre class="command-block">{{
+            getCommand(agent, singleLineMode[agent.name] || false)
+          }}</pre>
+
+          <button
+            class="copy-btn"
+            :class="{ copied: copiedAgent === agent.name }"
+            @click="copyCommand(agent)"
           >
-
-          <button class="copy-btn" @click="copyCommand(agent)">
-            <span class="mdi mdi-content-copy"></span>
-            Copy Command
+            <span
+              class="mdi"
+              :class="
+                copiedAgent === agent.name ? 'mdi-check' : 'mdi-content-copy'
+              "
+            ></span>
+            {{ copiedAgent === agent.name ? "Copied!" : "Copy Command" }}
           </button>
         </div>
 
@@ -119,19 +173,23 @@ docker run -d \
           <p class="containers-title">
             Containers ({{ agent.containers.length }})
           </p>
-          <ul class="container-list">
-            <li
+          <div class="container-grid">
+            <div
               v-for="c in agent.containers"
-              :key="c.name"
-              class="container-item"
+              :key="c.id || c.name"
+              class="container-card"
             >
-              <span class="container-name">{{ c.name }}</span>
-              <span class="container-image">{{ c.image }}</span>
-              <span class="container-state" :class="c.state">{{
-                c.state
-              }}</span>
-            </li>
-          </ul>
+              <div class="container-content">
+                <span class="container-name">{{ c.name }}</span>
+                <span class="container-status">{{ c.status }}</span>
+              </div>
+              <div
+                class="status-line"
+                :class="getStateClass(c.state)"
+                :title="c.status"
+              ></div>
+            </div>
+          </div>
         </div>
 
         <div
@@ -262,12 +320,34 @@ docker run -d \
   border-top: 1px solid var(--color-border);
 }
 
+.setup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
 .setup-title,
 .containers-title {
-  margin: 0 0 0.75rem;
+  margin: 0 0 1rem 0;
   font-size: 0.9rem;
   color: var(--color-text);
   opacity: 0.8;
+}
+
+.single-line-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--color-text);
+  opacity: 0.7;
+  cursor: pointer;
+  user-select: none;
+}
+
+.single-line-toggle input {
+  cursor: pointer;
 }
 
 .command-block {
@@ -293,11 +373,15 @@ docker run -d \
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.85rem;
-  transition: opacity 0.2s;
+  transition: background 0.2s, opacity 0.2s;
 }
 
 .copy-btn:hover {
   opacity: 0.9;
+}
+
+.copy-btn.copied {
+  background: #00c896;
 }
 
 .containers-section {
@@ -306,52 +390,92 @@ docker run -d \
   border-top: 1px solid var(--color-border);
 }
 
-.container-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.container-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
 }
 
-.container-item {
+.container-card {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
+  gap: 14px;
+  position: relative;
+
+  padding: 16px;
   background: var(--color-bg);
-  border-radius: 8px;
-  font-size: 0.85rem;
+  border-radius: 2em;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  overflow: hidden;
+  isolation: isolate;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+.container-card:hover {
+  transform: translateY(-2px);
+}
+
+.container-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
 }
 
 .container-name {
-  font-weight: 500;
+  font-size: 0.9rem;
+  font-weight: 600;
   color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.container-image {
-  flex: 1;
+.container-status {
+  font-size: 0.75rem;
   color: var(--color-text);
   opacity: 0.6;
-  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.container-state {
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
+/* Status Line */
+.status-line {
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  right: 10%;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  transition: background-color 0.3s ease;
 }
 
-.container-state.running {
-  background: rgba(0, 200, 150, 0.2);
-  color: #00c896;
+.status-line.state-running {
+  background-color: #86efac; /* pastel green */
 }
 
-.container-state.exited {
-  background: rgba(255, 106, 106, 0.2);
-  color: #ff6a6a;
+.status-line.state-stopped {
+  background-color: #fca5a5; /* pastel red */
+}
+
+.status-line.state-paused {
+  background-color: #fcd34d; /* pastel yellow */
+}
+
+.status-line.state-restarting {
+  background-color: #93c5fd; /* pastel blue */
+}
+
+.status-line.state-unknown {
+  background-color: #94a3b8; /* gray */
 }
 
 .no-containers {

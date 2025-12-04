@@ -612,65 +612,76 @@ func main() {
 	// API endpoint: GET /api/docker/agents
 	// Lists all configured docker agents with their connection status
 	mux.HandleFunc("/api/docker/agents", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
-		// Get current config to read configured agents
-		currentCfg := store.Get()
+	w.Header().Set("Content-Type", "application/json")
 
-		// Get connected nodes from registry
-		connectedNodes := registry.Snapshot()
+	// UI-Config aus dem Store (ist immer "valid", weil nur bei erfolgreichem Reload ersetzt wird)
+	currentCfg := store.Get()
 
-		// Build response with all configured agents
-		type AgentResponse struct {
-			Name       string      `json:"name"`
-			Token      string      `json:"token"`
-			Connected  bool        `json:"connected"`
-			LastSeen   *string     `json:"lastSeen"`
-			Containers interface{} `json:"containers"`
-		}
+	// Verbundene Nodes aus Registry
+	connectedNodes := registry.Snapshot()
 
-		agents := make([]AgentResponse, 0)
+	// Original-Config für Tokens / Agents laden
+	cfg, _, err := config.EnsureAndLoadConfig()
+	if err != nil {
+		log.Printf("Failed to load config in /api/docker/agents: %v", err)
 
-		// Get original config to access agent tokens (store.Get() doesn't include them)
-		cfg, _, _ := config.EnsureAndLoadConfig()
-
-		for _, agentCfg := range cfg.Docker.Agents {
-			agent := AgentResponse{
-				Name:       agentCfg.Name,
-				Token:      agentCfg.Token,
-				Connected:  false,
-				LastSeen:   nil,
-				Containers: []interface{}{},
-			}
-
-			// Check if this agent is connected
-			if node, exists := connectedNodes[agentCfg.Name]; exists {
-				agent.Connected = true
-				lastSeen := node.LastSeen.Format("2006-01-02T15:04:05Z07:00")
-				agent.LastSeen = &lastSeen
-				agent.Containers = node.Containers
-			}
-
-			agents = append(agents, agent)
-		}
-
-		// Also check if docker is enabled locally
-		// Use configured host or fall back to request host
-		hostURL := cfg.Docker.Host
-		if hostURL == "" {
-			hostURL = r.Host
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		// Kein Panic, sondern sauberer Fehler-Response
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"enabled":    currentCfg.Docker.Enabled,
-			"agents":     agents,
-			"serverHost": hostURL,
+			"agents":     []interface{}{},
+			"serverHost": r.Host,
+			"error":      "failed to load config",
 		})
+		return
+	}
+
+	type AgentResponse struct {
+		Name       string      `json:"name"`
+		Token      string      `json:"token"`
+		Connected  bool        `json:"connected"`
+		LastSeen   *string     `json:"lastSeen"`
+		Containers interface{} `json:"containers"`
+	}
+
+	agents := make([]AgentResponse, 0, len(cfg.Docker.Agents))
+
+	for _, agentCfg := range cfg.Docker.Agents {
+		agent := AgentResponse{
+			Name:       agentCfg.Name,
+			Token:      agentCfg.Token,
+			Connected:  false,
+			LastSeen:   nil,
+			Containers: []interface{}{},
+		}
+
+		if node, exists := connectedNodes[agentCfg.Name]; exists {
+			agent.Connected = true
+			lastSeen := node.LastSeen.Format(time.RFC3339)
+			agent.LastSeen = &lastSeen
+			agent.Containers = node.Containers
+		}
+
+		agents = append(agents, agent)
+	}
+
+	// Host für den Docker-Run-Command
+	hostURL := cfg.Docker.Host
+	if hostURL == "" {
+		hostURL = r.Host
+	}
+
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"enabled":    currentCfg.Docker.Enabled,
+		"agents":     agents,
+		"serverHost": hostURL,
 	})
+})
 
 	// SSE endpoint for live reload
 	mux.HandleFunc("/api/events", func(w http.ResponseWriter, r *http.Request) {

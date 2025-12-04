@@ -166,6 +166,14 @@ onUnmounted(() => {
         <div>Docker</div>
         <div class="tab-subtitle">Local</div>
       </div>
+      <div
+        class="tab"
+        :class="{ active: activeTab === 'docker-nodes' }"
+        @click="emit('tabChange', 'docker-nodes')"
+      >
+        <div>Docker</div>
+        <div class="tab-subtitle">Nodes</div>
+      </div>
     </nav>
 
     <!-- Right section - weather and datetime -->

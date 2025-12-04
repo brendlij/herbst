@@ -20,23 +20,19 @@ provide("searchQuery", searchQuery);
 let eventSource: EventSource | null = null;
 
 // Compute active tab from route
-const activeTab = ref(route.name === "docker" ? "docker" : "services");
+const activeTab = ref((route.name as string) || "services");
 
 // Watch route changes to update activeTab
 watch(
   () => route.name,
   (name) => {
-    activeTab.value = name === "docker" ? "docker" : "services";
+    activeTab.value = (name as string) || "services";
   }
 );
 
 // Handle tab change by navigating
 function handleTabChange(tab: string) {
-  if (tab === "docker") {
-    router.push({ name: "docker" });
-  } else {
-    router.push({ name: "services" });
-  }
+  router.push({ name: tab });
 }
 
 async function loadConfig() {

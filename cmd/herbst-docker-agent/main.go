@@ -7,7 +7,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"herbst/internal/proto"
@@ -30,34 +32,62 @@ func main() {
 		log.Fatal("HERBST_TOKEN is required")
 	}
 
-	// Docker socket path (default für Linux)
 	socketPath := os.Getenv("DOCKER_SOCKET")
 	if socketPath == "" {
 		socketPath = "/var/run/docker.sock"
 	}
 
-	ctx := context.Background()
+	log.Printf("starting herbst-docker-agent for node=%q, url=%q, socket=%q",
+		nodeName, herbstURL, socketPath)
 
-	// HTTP-Client, der über den Unix-Socket spricht
 	httpClient := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				return net.Dial("unix", socketPath)
 			},
 		},
-		Timeout: 5 * time.Second,
+		Timeout: 8 * time.Second,
 	}
 
-	// WebSocket zu herbst
-	c, _, err := websocket.Dial(ctx, herbstURL, nil)
+	// Graceful shutdown
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	for {
+		if ctx.Err() != nil {
+			log.Println("shutdown requested, exiting agent loop")
+			return
+		}
+
+		if err := runOnce(ctx, herbstURL, token, nodeName, httpClient); err != nil {
+			log.Printf("agent cycle ended with error: %v", err)
+		} else {
+			log.Println("agent cycle ended without explicit error")
+		}
+
+		// kleiner Backoff, bevor wir neu verbinden
+		select {
+		case <-ctx.Done():
+			log.Println("shutdown requested during backoff, exiting")
+			return
+		case <-time.After(5 * time.Second):
+		}
+	}
+}
+
+func runOnce(ctx context.Context, herbstURL, token, nodeName string, httpClient *http.Client) error {
+	// eigene Connect-Deadline
+	dialCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	c, _, err := websocket.Dial(dialCtx, herbstURL, nil)
 	if err != nil {
-		log.Fatalf("failed to connect to herbst: %v", err)
+		return err
 	}
 	defer c.Close(websocket.StatusNormalClosure, "bye")
 
 	log.Printf("Connected to %s as node %q", herbstURL, nodeName)
 
-	// HELLO
 	hello := proto.HelloMessage{
 		Type:     "hello",
 		NodeName: nodeName,
@@ -65,38 +95,44 @@ func main() {
 		Kind:     "docker",
 	}
 	if err := sendJSON(ctx, c, hello); err != nil {
-		log.Fatalf("failed to send hello: %v", err)
+		return wrapErr("failed to send hello", err)
 	}
 	log.Println("Hello sent")
 
-	// Polling-Loop
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		containers, err := fetchDockerContainers(ctx, httpClient)
-		if err != nil {
-			log.Printf("failed to list containers: %v", err)
-			continue
-		}
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
 
-		msg := proto.ContainersMessage{
-			Type:       "containers",
-			NodeName:   nodeName,
-			Containers: containers,
-		}
+		case <-ticker.C:
+			containers, err := fetchDockerContainers(ctx, httpClient)
+			if err != nil {
+				log.Printf("failed to list containers: %v", err)
+				// Kein Abbruch, einfach beim nächsten Tick nochmal probieren
+				continue
+			}
 
-		if err := sendJSON(ctx, c, msg); err != nil {
-			log.Printf("failed to send containers: %v", err)
-			return
-		}
+			msg := proto.ContainersMessage{
+				Type:       "containers",
+				NodeName:   nodeName,
+				Containers: containers,
+			}
 
-		log.Printf("Sent %d containers for node %q", len(containers), nodeName)
+			if err := sendJSON(ctx, c, msg); err != nil {
+				// typischer Fall: broken pipe / server weg / unauthorized -> runOnce beendet sich,
+				// main-Loop macht Reconnect
+				return wrapErr("failed to send containers", err)
+			}
+
+			log.Printf("Sent %d containers for node %q", len(containers), nodeName)
+		}
 	}
 }
 
 func fetchDockerContainers(ctx context.Context, client *http.Client) ([]proto.Container, error) {
-	// Docker HTTP API – identisch zu deinem Server-Code
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://docker/containers/json?all=true", nil)
 	if err != nil {
 		return nil, err
@@ -107,6 +143,10 @@ func fetchDockerContainers(ctx context.Context, client *http.Client) ([]proto.Co
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, wrapErr("docker API returned error status", errStatus(resp.StatusCode))
+	}
 
 	var raw []struct {
 		ID      string   `json:"Id"`
@@ -143,9 +183,41 @@ func fetchDockerContainers(ctx context.Context, client *http.Client) ([]proto.Co
 }
 
 func sendJSON(ctx context.Context, c *websocket.Conn, v any) error {
-	b, err := json.Marshal(v)
+	data, err := json.Marshal(v)
 	if err != nil {
 		return err
 	}
-	return c.Write(ctx, websocket.MessageText, b)
+
+	// eigener Timeout fürs Schreiben
+	writeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	return c.Write(writeCtx, websocket.MessageText, data)
+}
+
+// kleine Helfer für nicer Logs / Fehlermeldungen
+type errStatus int
+
+func (e errStatus) Error() string {
+	return http.StatusText(int(e))
+}
+
+func wrapErr(msg string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return &wrappedError{msg: msg, inner: err}
+}
+
+type wrappedError struct {
+	msg   string
+	inner error
+}
+
+func (w *wrappedError) Error() string {
+	return w.msg + ": " + w.inner.Error()
+}
+
+func (w *wrappedError) Unwrap() error {
+	return w.inner
 }
