@@ -35,9 +35,18 @@ type Weather struct {
 
 // Docker holds Docker integration configuration
 type Docker struct {
-	Enabled    *bool  `toml:"enabled"     json:"enabled"`    // Pointer to detect if explicitly set
-	SocketPath string `toml:"socket-path" json:"socketPath"`
+	Enabled    *bool               `toml:"enabled"     json:"enabled"`    // Pointer to detect if explicitly set
+	SocketPath string              `toml:"socket-path" json:"socketPath"`
+	Agents     []DockerAgentConfig `toml:"agents"      json:"agents"`     // [[docker.agents]]
 }
+
+// DockerAgentConfig represents a remote docker agent node
+type DockerAgentConfig struct {
+	Name  string `toml:"name"  json:"name"`
+	Token string `toml:"token" json:"token"`
+}
+
+
 
 // IsEnabled returns true if Docker is enabled (auto-detects if not explicitly set)
 func (d *Docker) IsEnabled() bool {
@@ -138,6 +147,12 @@ func expandEnvVars(cfg *Config) {
 
 	// Expand in Docker config
 	cfg.Docker.SocketPath = expand(cfg.Docker.SocketPath)
+
+	// Expand in Docker agent configs
+	for i := range cfg.Docker.Agents {
+		cfg.Docker.Agents[i].Name  = expand(cfg.Docker.Agents[i].Name)
+		cfg.Docker.Agents[i].Token = expand(cfg.Docker.Agents[i].Token)
+	}
 
 	// Expand in UI config
 	cfg.UI.Background.Image = expand(cfg.UI.Background.Image)

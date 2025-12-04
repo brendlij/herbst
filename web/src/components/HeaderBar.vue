@@ -1,22 +1,18 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import Logo from "./Logo.vue";
 import type { WeatherConfig } from "../types/config";
 
 const props = defineProps<{
   title: string;
   weather: WeatherConfig;
+  activeTab: string;
+  dockerEnabled: boolean;
 }>();
 
 const emit = defineEmits<{
-  (e: "search", query: string): void;
+  (e: "tabChange", tab: string): void;
 }>();
-
-const placeholder = computed(() =>
-  searchQuery.value.startsWith("@")
-    ? "Search services…"
-    : "Search Google or type @service"
-);
 
 const time = ref("");
 const date = ref("");
@@ -35,45 +31,6 @@ const weatherData = ref<{
 } | null>(null);
 const weatherError = ref<string | null>(null);
 let weatherInterval: ReturnType<typeof setInterval> | null = null;
-
-const searchQuery = ref("");
-
-function onSearchInput() {
-  const query = searchQuery.value.trim();
-
-  // Nur Services suchen, wenn mit "@" begonnen wird
-  if (query.startsWith("@")) {
-    const serviceQuery = query.slice(1); // ohne "@"
-    emit("search", serviceQuery);
-  } else {
-    // Kein @ → Service-Filter zurücksetzen
-    emit("search", "");
-  }
-}
-
-function onSearchKey(e: KeyboardEvent) {
-  if (e.key !== "Enter") return;
-
-  const query = searchQuery.value.trim();
-
-  // Enter + @ → Servicesuche erzwingen
-  if (query.startsWith("@")) {
-    const serviceQuery = query.slice(1);
-    emit("search", serviceQuery);
-    return;
-  }
-
-  // Enter ohne @ → Google-Suche
-  if (query.length > 0) {
-    const encoded = encodeURIComponent(query);
-    window.open(`https://www.google.com/search?q=${encoded}`, "_blank");
-  }
-}
-
-function clearSearch() {
-  searchQuery.value = "";
-  emit("search", ""); // Filter resetten
-}
 
 function updateClock() {
   const now = new Date();
@@ -183,7 +140,7 @@ onUnmounted(() => {
 
 <template>
   <header class="header-bar">
-    <!-- Left section - fixed width -->
+    <!-- Left section - logo and title -->
     <div class="header-left">
       <div class="logo-icon">
         <Logo color="var(--color-accent)" />
@@ -191,32 +148,26 @@ onUnmounted(() => {
       <span class="title">{{ title }}</span>
     </div>
 
-    <!-- Center section - search bar always centered -->
-    <div class="header-center">
-      <div class="search-container">
-        <input
-          v-model="searchQuery"
-          type="text"
-          class="search-input"
-          :placeholder="placeholder"
-          @input="onSearchInput"
-          @keydown="onSearchKey"
-        />
-        <span class="search-icon mdi mdi-magnify"></span>
-
-        <!-- Clear Button -->
-        <button
-          v-if="searchQuery"
-          type="button"
-          class="clear-button"
-          @click="clearSearch"
-        >
-          <span class="mdi mdi-close"></span>
-        </button>
+    <!-- Center section - tabs -->
+    <nav class="header-tabs">
+      <div
+        class="tab"
+        :class="{ active: activeTab === 'services' }"
+        @click="emit('tabChange', 'services')"
+      >
+        Services
       </div>
-    </div>
+      <div
+        v-if="dockerEnabled"
+        class="tab"
+        :class="{ active: activeTab === 'docker' }"
+        @click="emit('tabChange', 'docker')"
+      >
+        Docker
+      </div>
+    </nav>
 
-    <!-- Right section - fixed width -->
+    <!-- Right section - weather and datetime -->
     <div class="header-right">
       <!-- Weather -->
       <div v-if="weatherData" class="weather-info">
@@ -251,7 +202,7 @@ onUnmounted(() => {
   padding-left: 12px;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  border-radius: 2em 2em 0 0;
+  border-radius: 2em;
 
   /* Backdrop blur for transparent themes */
   backdrop-filter: blur(12px);
@@ -266,11 +217,42 @@ onUnmounted(() => {
   min-width: 0;
 }
 
-.header-center {
+.header-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.tab {
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+  transition: 0.2s ease;
+  user-select: none;
+}
+
+.tab:hover {
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+.tab.active {
+  color: var(--color-text);
+}
+
+.tab.active::after {
+  content: "";
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1;
+  bottom: -2px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--color-accent);
+  border-radius: 4px;
 }
 
 .header-right {
@@ -301,61 +283,6 @@ onUnmounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* Search Bar */
-.search-container {
-  position: relative;
-  width: 300px;
-}
-
-.search-input {
-  width: 100%;
-  padding: 10px 32px;
-  padding-left: 40px; /* für die Lupe */
-  background: var(--color-bg);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 2em;
-  color: var(--color-text);
-  font-size: 0.9rem;
-  outline: none;
-}
-
-.clear-button {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  border: none;
-  background: transparent;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-  display: flex;
-  opacity: 0.7;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-  color: var(--color-text);
-}
-
-.clear-button:hover {
-  opacity: 0.9;
-}
-
-.search-input::placeholder {
-  color: var(--color-text);
-  opacity: 0.5;
-}
-
-.search-icon {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.9rem;
-  opacity: 0.5;
-  pointer-events: none;
 }
 
 .datetime {

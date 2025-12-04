@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import HeaderTabs from "./HeaderTabs.vue";
 import FooterBar from "./FooterBar.vue";
 import HeaderBar from "./HeaderBar.vue";
+import SearchBar from "./SearchBar.vue";
 import type { WeatherConfig, DockerConfig } from "../types/config";
 
 defineProps<{
@@ -20,22 +20,17 @@ const emit = defineEmits<{
 <template>
   <div class="layout-shell">
     <div class="layout-content">
-      <!-- <header class="header">
-        <Logo size="120" />
-        <h1>{{ title }}</h1>
-      </header> -->
+      <!-- United Header with Tabs -->
       <HeaderBar
         :title="title"
         :weather="weather"
-        @search="emit('search', $event)"
-      />
-
-      <!-- Tabs unter dem Header -->
-      <HeaderTabs
         :active-tab="activeTab"
         :docker-enabled="docker.enabled"
         @tab-change="emit('tabChange', $event)"
       />
+
+      <!-- Search Bar outside the header -->
+      <SearchBar @search="emit('search', $event)" />
 
       <main class="main">
         <slot />
@@ -67,21 +62,7 @@ const emit = defineEmits<{
   padding-top: 0;
 }
 
-.header {
-  padding: 2rem 0 1.5rem;
-  text-align: center;
-}
-
-.header h1 {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: var(--color-text);
-  letter-spacing: -0.02em;
-}
-
 .main {
   padding-bottom: 2rem;
-  padding-top: 2rem;
 }
 </style>

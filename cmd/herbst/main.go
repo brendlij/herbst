@@ -17,6 +17,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/joho/godotenv"
 
+	"herbst/internal/agents"
 	"herbst/internal/config"
 	"herbst/internal/themes"
 	"herbst/internal/util"
@@ -207,7 +208,52 @@ func main() {
 	// Start file watcher
 	go watchFiles(store, configPath, themesPath)
 
+	registry := agents.NewRegistry()
+	agentServer := agents.NewServer(cfg, registry)
+
 	mux := http.NewServeMux()
+
+		// WebSocket für Agents: /api/agents/ws
+	mux.HandleFunc("/api/agents/ws", agentServer.HandleWS)
+
+	// Remote-Docker-Nodes: /api/docker/nodes
+	mux.HandleFunc("/api/docker/nodes", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		snapshot := registry.Snapshot()
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(snapshot); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			return
+		}
+	})
+
+	// API endpoint: POST /api/reload
+	// Reloads the configuration files and notifies all connected clients
+	mux.HandleFunc("/api/reload", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		log.Println("Config reload requested via API")
+
+		if err := store.Reload(); err != nil {
+			log.Printf("Failed to reload config: %v", err)
+			http.Error(w, "Failed to reload configuration", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Configuration reloaded successfully",
+		})
+	})
 
 	// API endpoint: GET /api/config
 	mux.HandleFunc("/api/config", func(w http.ResponseWriter, r *http.Request) {
