@@ -36,6 +36,7 @@ type Weather struct {
 // Docker holds Docker integration configuration
 type Docker struct {
 	Enabled    *bool               `toml:"enabled"     json:"enabled"`    // Pointer to detect if explicitly set
+	Host       string              `toml:"host"        json:"host"`       // External host URL for agents (e.g. "192.168.1.100:8080")
 	SocketPath string              `toml:"socket-path" json:"socketPath"`
 	Agents     []DockerAgentConfig `toml:"agents"      json:"agents"`     // [[docker.agents]]
 }

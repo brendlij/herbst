@@ -609,6 +609,69 @@ func main() {
 		})
 	})
 
+	// API endpoint: GET /api/docker/agents
+	// Lists all configured docker agents with their connection status
+	mux.HandleFunc("/api/docker/agents", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Get current config to read configured agents
+		currentCfg := store.Get()
+
+		// Get connected nodes from registry
+		connectedNodes := registry.Snapshot()
+
+		// Build response with all configured agents
+		type AgentResponse struct {
+			Name       string      `json:"name"`
+			Token      string      `json:"token"`
+			Connected  bool        `json:"connected"`
+			LastSeen   *string     `json:"lastSeen"`
+			Containers interface{} `json:"containers"`
+		}
+
+		agents := make([]AgentResponse, 0)
+
+		// Get original config to access agent tokens (store.Get() doesn't include them)
+		cfg, _, _ := config.EnsureAndLoadConfig()
+
+		for _, agentCfg := range cfg.Docker.Agents {
+			agent := AgentResponse{
+				Name:       agentCfg.Name,
+				Token:      agentCfg.Token,
+				Connected:  false,
+				LastSeen:   nil,
+				Containers: []interface{}{},
+			}
+
+			// Check if this agent is connected
+			if node, exists := connectedNodes[agentCfg.Name]; exists {
+				agent.Connected = true
+				lastSeen := node.LastSeen.Format("2006-01-02T15:04:05Z07:00")
+				agent.LastSeen = &lastSeen
+				agent.Containers = node.Containers
+			}
+
+			agents = append(agents, agent)
+		}
+
+		// Also check if docker is enabled locally
+		// Use configured host or fall back to request host
+		hostURL := cfg.Docker.Host
+		if hostURL == "" {
+			hostURL = r.Host
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"enabled":    currentCfg.Docker.Enabled,
+			"agents":     agents,
+			"serverHost": hostURL,
+		})
+	})
+
 	// SSE endpoint for live reload
 	mux.HandleFunc("/api/events", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
