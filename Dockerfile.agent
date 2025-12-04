@@ -1,0 +1,30 @@
+# ---- Build stage ----
+FROM golang:1.25-alpine AS build
+
+WORKDIR /app
+
+# Dependencies installieren
+RUN apk add --no-cache git
+
+# Code rein
+COPY . .
+
+# Statisches Binary bauen
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -o /herbst-docker-agent \
+    ./cmd/herbst-docker-agent
+
+# ---- Runtime stage ----
+FROM alpine:3.20
+
+# CA Certificates
+RUN apk add --no-cache ca-certificates && update-ca-certificates
+
+# Agent Binary aus Build Stage
+COPY --from=build /herbst-docker-agent /usr/local/bin/herbst-docker-agent
+
+# Für ausführbar machen (falls nötig)
+RUN chmod +x /usr/local/bin/herbst-docker-agent
+
+# Default CMD
+CMD ["/usr/local/bin/herbst-docker-agent"]
