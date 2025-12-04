@@ -31,6 +31,8 @@ jobs:
       # Build & push HERBST main image
       # ------------------------
       - name: Build & push herbst (dashboard)
+        if: |
+          !contains(github.event.head_commit.message, '[agent-only]')
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -45,6 +47,8 @@ jobs:
       # Build & push HERBST DOCKER AGENT image
       # ------------------------
       - name: Build & push herbst-docker-agent
+        if: |
+          !contains(github.event.head_commit.message, '[dashboard-only]')
         uses: docker/build-push-action@v5
         with:
           context: .
