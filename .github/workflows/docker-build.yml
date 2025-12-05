@@ -53,7 +53,7 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/herbst:dev
-            ghcr.io/${{ github.repository_owner }}/herbst:${{ github.ref_name }}   # main
+            ghcr.io/${{ github.repository_owner }}/herbst:${{ github.ref_name }}
             ghcr.io/${{ github.repository_owner }}/herbst:${{ github.sha }}
 
       - name: Build & push herbst-docker-agent [dev]
@@ -65,7 +65,7 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:dev
-            ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:${{ github.ref_name }}   # main
+            ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:${{ github.ref_name }}
             ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:${{ github.sha }}
 
       # ============================
@@ -80,8 +80,8 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/herbst:latest
-            ghcr.io/${{ github.repository_owner }}/herbst:${{ env.VERSION }}                # v0.3.0
-            ghcr.io/${{ github.repository_owner }}/herbst:${{ steps.version.outputs.plain }} # 0.3.0
+            ghcr.io/${{ github.repository_owner }}/herbst:${{ env.VERSION }}
+            ghcr.io/${{ github.repository_owner }}/herbst:${{ steps.version.outputs.plain }}
 
       - name: Build & push herbst-docker-agent [release]
         if: ${{ github.ref_type == 'tag' && !contains(github.event.head_commit.message, '[dashboard-only]') }}
@@ -92,5 +92,5 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:latest
-            ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:${{ env.VERSION }}                # v0.3.0
-            ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:${{ steps.version.outputs.plain }} # 0.3.0
+            ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:${{ env.VERSION }}
+            ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:${{ steps.version.outputs.plain }}
