@@ -3,6 +3,8 @@ name: Build & Publish Docker Images
 on:
   push:
     branches: ["main"]
+    tags:
+      - "v*.*.*" # e.g. v0.3.0
   workflow_dispatch:
 
 jobs:
@@ -12,6 +14,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+
+    env:
+      VERSION: ${{ github.ref_name }} # on tag pushes: e.g. v0.3.0
 
     steps:
       - name: Checkout repository
@@ -27,12 +32,47 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # ------------------------
-      # Build & push HERBST main image
-      # ------------------------
-      - name: Build & push herbst (dashboard)
-        if: |
-          !contains(github.event.head_commit.message, '[agent-only]')
+      - name: Compute plain version (without v)
+        id: version
+        if: ${{ github.ref_type == 'tag' }}
+        run: |
+          plain="${VERSION#v}"
+          echo "plain=$plain" >> "$GITHUB_OUTPUT"
+        env:
+          VERSION: ${{ env.VERSION }}
+
+      # ============================
+      # DEV BUILDS (push to main)
+      # ============================
+      - name: Build & push herbst (dashboard) [dev]
+        if: ${{ github.ref_type == 'branch' && !contains(github.event.head_commit.message, '[agent-only]') }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/herbst:dev
+            ghcr.io/${{ github.repository_owner }}/herbst:${{ github.ref_name }}   # main
+            ghcr.io/${{ github.repository_owner }}/herbst:${{ github.sha }}
+
+      - name: Build & push herbst-docker-agent [dev]
+        if: ${{ github.ref_type == 'branch' && !contains(github.event.head_commit.message, '[dashboard-only]') }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.agent
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:dev
+            ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:${{ github.ref_name }}   # main
+            ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:${{ github.sha }}
+
+      # ============================
+      # RELEASE BUILDS (git tag vX.Y.Z)
+      # ============================
+      - name: Build & push herbst (dashboard) [release]
+        if: ${{ github.ref_type == 'tag' && !contains(github.event.head_commit.message, '[agent-only]') }}
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -40,15 +80,11 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/herbst:latest
-            ghcr.io/${{ github.repository_owner }}/herbst:${{ github.ref_name }}
-            ghcr.io/${{ github.repository_owner }}/herbst:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/herbst:${{ env.VERSION }}                # v0.3.0
+            ghcr.io/${{ github.repository_owner }}/herbst:${{ steps.version.outputs.plain }} # 0.3.0
 
-      # ------------------------
-      # Build & push HERBST DOCKER AGENT image
-      # ------------------------
-      - name: Build & push herbst-docker-agent
-        if: |
-          !contains(github.event.head_commit.message, '[dashboard-only]')
+      - name: Build & push herbst-docker-agent [release]
+        if: ${{ github.ref_type == 'tag' && !contains(github.event.head_commit.message, '[dashboard-only]') }}
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -56,5 +92,5 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:latest
-            ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:${{ github.ref_name }}
-            ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:${{ env.VERSION }}                # v0.3.0
+            ghcr.io/${{ github.repository_owner }}/herbst-docker-agent:${{ steps.version.outputs.plain }} # 0.3.0
