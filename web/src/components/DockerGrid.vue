@@ -127,7 +127,7 @@ watch(
 }
 
 .docker-error {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 .container-list {
@@ -201,22 +201,22 @@ watch(
 }
 
 .status-line.state-running {
-  background-color: #86efac; /* pastel green */
+  background-color: var(--color-success);
 }
 
 .status-line.state-stopped {
-  background-color: #fca5a5; /* pastel red */
+  background-color: var(--color-error);
 }
 
 .status-line.state-paused {
-  background-color: #fcd34d; /* pastel yellow */
+  background-color: var(--color-warning);
 }
 
 .status-line.state-restarting {
-  background-color: #93c5fd; /* pastel blue */
+  background-color: var(--color-info);
 }
 
 .status-line.state-unknown {
-  background-color: #94a3b8; /* gray */
+  background-color: var(--color-text-muted);
 }
 </style>

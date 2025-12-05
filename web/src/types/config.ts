@@ -31,6 +31,7 @@ export type WeatherData = {
 export type DockerConfig = {
   enabled: boolean;
   socketPath: string;
+  agentsConfigured: boolean;
 };
 
 export type DockerContainer = {

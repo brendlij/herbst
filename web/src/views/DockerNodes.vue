@@ -284,19 +284,19 @@ token = "your-secret-token"</pre
 }
 
 .status.connected {
-  color: #00c896;
+  color: var(--color-success);
 }
 
 .status.connected .status-dot {
-  background: #00c896;
+  background: var(--color-success);
 }
 
 .status.disconnected {
-  color: #ff6a6a;
+  color: var(--color-error);
 }
 
 .status.disconnected .status-dot {
-  background: #ff6a6a;
+  background: var(--color-error);
 }
 
 .node-info {
@@ -381,7 +381,7 @@ token = "your-secret-token"</pre
 }
 
 .copy-btn.copied {
-  background: #00c896;
+  background: var(--color-success);
 }
 
 .containers-section {
@@ -459,23 +459,23 @@ token = "your-secret-token"</pre
 }
 
 .status-line.state-running {
-  background-color: #86efac; /* pastel green */
+  background-color: var(--color-success);
 }
 
 .status-line.state-stopped {
-  background-color: #fca5a5; /* pastel red */
+  background-color: var(--color-error);
 }
 
 .status-line.state-paused {
-  background-color: #fcd34d; /* pastel yellow */
+  background-color: var(--color-warning);
 }
 
 .status-line.state-restarting {
-  background-color: #93c5fd; /* pastel blue */
+  background-color: var(--color-info);
 }
 
 .status-line.state-unknown {
-  background-color: #94a3b8; /* gray */
+  background-color: var(--color-text-muted);
 }
 
 .no-containers {

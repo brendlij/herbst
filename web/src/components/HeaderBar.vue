@@ -8,6 +8,7 @@ const props = defineProps<{
   weather: WeatherConfig;
   activeTab: string;
   dockerEnabled: boolean;
+  dockerAgentsConfigured: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -167,12 +168,20 @@ onUnmounted(() => {
         <div class="tab-subtitle">Local</div>
       </div>
       <div
+        v-if="dockerAgentsConfigured"
         class="tab"
         :class="{ active: activeTab === 'docker-nodes' }"
         @click="emit('tabChange', 'docker-nodes')"
       >
         <div>Docker</div>
-        <div class="tab-subtitle">Nodes</div>
+        <div class="tab-subtitle">Agents</div>
+      </div>
+      <div
+        class="tab"
+        :class="{ active: activeTab === 'config' }"
+        @click="emit('tabChange', 'config')"
+      >
+        <div>Configuration</div>
       </div>
     </nav>
 

@@ -26,6 +26,7 @@ const emit = defineEmits<{
         :weather="weather"
         :active-tab="activeTab"
         :docker-enabled="docker.enabled"
+        :docker-agents-configured="docker.agentsConfigured"
         @tab-change="emit('tabChange', $event)"
       />
 

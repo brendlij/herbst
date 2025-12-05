@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import ServicesView from "../views/ServicesView.vue";
 import DockerLocalView from "../views/DockerLocalView.vue";
 import DockerNodes from "../views/DockerNodes.vue";
+import ConfigView from "../views/ConfigView.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -20,6 +21,11 @@ const router = createRouter({
       path: "/docker-nodes",
       name: "docker-nodes",
       component: DockerNodes,
+    },
+    {
+      path: "/config",
+      name: "config",
+      component: ConfigView,
     },
   ],
 });

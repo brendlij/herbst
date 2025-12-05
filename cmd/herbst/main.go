@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/joho/godotenv"
+	"github.com/pelletier/go-toml/v2"
 
 	"herbst/internal/agents"
 	"herbst/internal/config"
@@ -31,8 +33,9 @@ const (
 
 // DockerAPIConfig is the resolved Docker config for API responses
 type DockerAPIConfig struct {
-	Enabled    bool   `json:"enabled"`
-	SocketPath string `json:"socketPath"`
+	Enabled          bool   `json:"enabled"`
+	SocketPath       string `json:"socketPath"`
+	AgentsConfigured bool   `json:"agentsConfigured"`
 }
 
 // APIConfig is the response structure for /api/config
@@ -138,8 +141,9 @@ func (cs *ConfigStore) Reload() error {
 		UI:      cfg.UI,
 		Weather: cfg.Weather,
 		Docker: DockerAPIConfig{
-			Enabled:    cfg.Docker.IsEnabled(),
-			SocketPath: cfg.Docker.SocketPath,
+			Enabled:          cfg.Docker.IsEnabled(),
+			SocketPath:       cfg.Docker.SocketPath,
+			AgentsConfigured: len(cfg.Docker.Agents) > 0,
 		},
 		Services:  cfg.Services,
 		Theme:     cfg.Theme,
@@ -193,8 +197,9 @@ func main() {
 			UI:      cfg.UI,
 			Weather: cfg.Weather,
 			Docker: DockerAPIConfig{
-				Enabled:    cfg.Docker.IsEnabled(),
-				SocketPath: cfg.Docker.SocketPath,
+				Enabled:          cfg.Docker.IsEnabled(),
+				SocketPath:       cfg.Docker.SocketPath,
+				AgentsConfigured: len(cfg.Docker.Agents) > 0,
 			},
 			Services:  cfg.Services,
 			Theme:     cfg.Theme,
@@ -266,6 +271,118 @@ func main() {
 		if err := json.NewEncoder(w).Encode(store.Get()); err != nil {
 			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 			return
+		}
+	})
+
+	// API endpoint: GET/PUT /api/config/raw
+	// GET returns raw TOML content, PUT saves it (with backup and validation)
+	mux.HandleFunc("/api/config/raw", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			data, err := os.ReadFile(store.configPath)
+			if err != nil {
+				http.Error(w, "Failed to read config file", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.Write(data)
+
+		case http.MethodPut:
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Failed to read request body", http.StatusBadRequest)
+				return
+			}
+
+			// Validate TOML syntax
+			var cfg config.Config
+			if err := toml.Unmarshal(body, &cfg); err != nil {
+				http.Error(w, "Invalid TOML: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			// Create backup
+			backupPath := store.configPath + ".bak"
+			if existing, err := os.ReadFile(store.configPath); err == nil {
+				if err := os.WriteFile(backupPath, existing, 0644); err != nil {
+					http.Error(w, "Failed to create backup", http.StatusInternalServerError)
+					return
+				}
+			}
+
+			// Write new config
+			if err := os.WriteFile(store.configPath, body, 0644); err != nil {
+				http.Error(w, "Failed to write config file", http.StatusInternalServerError)
+				return
+			}
+
+			// Reload config store
+			if err := store.Reload(); err != nil {
+				http.Error(w, "Config saved but reload failed: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	// API endpoint: GET/PUT /api/themes/raw
+	// GET returns raw themes.toml content, PUT saves it (with backup and validation)
+	mux.HandleFunc("/api/themes/raw", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			data, err := os.ReadFile(store.themesPath)
+			if err != nil {
+				http.Error(w, "Failed to read themes file", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.Write(data)
+
+		case http.MethodPut:
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Failed to read request body", http.StatusBadRequest)
+				return
+			}
+
+			// Validate TOML syntax
+			var themeFile themes.ThemeFile
+			if err := toml.Unmarshal(body, &themeFile); err != nil {
+				http.Error(w, "Invalid TOML: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			// Create backup
+			backupPath := store.themesPath + ".bak"
+			if existing, err := os.ReadFile(store.themesPath); err == nil {
+				if err := os.WriteFile(backupPath, existing, 0644); err != nil {
+					http.Error(w, "Failed to create backup", http.StatusInternalServerError)
+					return
+				}
+			}
+
+			// Write new themes
+			if err := os.WriteFile(store.themesPath, body, 0644); err != nil {
+				http.Error(w, "Failed to write themes file", http.StatusInternalServerError)
+				return
+			}
+
+			// Reload config store (this also reloads themes)
+			if err := store.Reload(); err != nil {
+				http.Error(w, "Themes saved but reload failed: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
 

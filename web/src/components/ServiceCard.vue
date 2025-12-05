@@ -154,15 +154,15 @@ onUnmounted(() => {
 }
 
 .status-line.online {
-  background-color: #86efac; /* pastel green */
+  background-color: var(--color-success);
 }
 
 .status-line.offline {
-  background-color: #fca5a5; /* pastel red */
+  background-color: var(--color-error);
 }
 
 .status-line.checking {
-  background-color: #94a3b8; /* gray */
+  background-color: var(--color-text-muted);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
