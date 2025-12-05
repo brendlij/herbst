@@ -11,6 +11,7 @@ No database. Just TOML, a tiny Go backend, and soft autumn vibes.</p>
 
 > [!WARNING]
 > herbst is in active development — expect bugs, missing features, and occasional UI teleportation :D
+> See [CHANGELOG.md](CHANGELOG.md) for recent changes.
 
 ---
 
