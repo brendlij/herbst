@@ -3,9 +3,8 @@ FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app/web
 
-# Install dependencies (skip optional native deps to avoid musl/rollup issues)
-COPY web/package.json web/package-lock.json ./
-RUN npm ci --no-optional --silent
+COPY web/package.json ./
+RUN npm install --no-optional --silent
 
 # Build frontend
 COPY web/ ./
