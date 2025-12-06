@@ -1,8 +1,8 @@
 import { createRouter, createWebHistory } from "vue-router";
-import * as ServicesView from "../views/ServicesView.vue";
-import * as DockerLocalView from "../views/DockerLocalView.vue";
-import * as DockerNodes from "../views/DockerNodes.vue";
-import * as ConfigView from "../views/ConfigView.vue";
+import ServicesView from "../views/ServicesView.vue";
+import DockerLocalView from "../views/DockerLocalView.vue";
+import DockerNodes from "../views/DockerNodes.vue";
+import ConfigView from "../views/ConfigView.vue";
 
 const router = createRouter({
   history: createWebHistory(),

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { Service } from "../types/config";
-import * as ServiceCard from "./ServiceCard.vue";
+import ServiceCard from "./ServiceCard.vue";
 
 const props = defineProps<{
   services: Service[];
