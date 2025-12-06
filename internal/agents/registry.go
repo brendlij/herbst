@@ -9,10 +9,11 @@ import (
 )
 
 type NodeState struct {
-	Name       string             `json:"name"`
-	Kind       string             `json:"kind"`      // z.B. "docker"
-	LastSeen   time.Time          `json:"lastSeen"`
-	Containers []proto.Container  `json:"containers"`
+	Name       string            `json:"name"`
+	Kind       string            `json:"kind"` // z.B. "docker"
+	Connected  bool              `json:"connected"`
+	LastSeen   time.Time         `json:"lastSeen"`
+	Containers []proto.Container `json:"containers"`
 }
 
 type Registry struct {
@@ -26,6 +27,21 @@ func NewRegistry() *Registry {
 	}
 }
 
+// SetConnected marks an agent as connected or disconnected
+func (r *Registry) SetConnected(nodeName string, kind string, connected bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	ns, ok := r.nodes[nodeName]
+	if !ok {
+		ns = &NodeState{Name: nodeName, Containers: []proto.Container{}}
+		r.nodes[nodeName] = ns
+	}
+	ns.Kind = kind
+	ns.Connected = connected
+	ns.LastSeen = time.Now()
+}
+
 func (r *Registry) UpdateContainers(nodeName string, kind string, containers []proto.Container) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -36,6 +52,7 @@ func (r *Registry) UpdateContainers(nodeName string, kind string, containers []p
 		r.nodes[nodeName] = ns
 	}
 	ns.Kind = kind
+	ns.Connected = true
 	ns.Containers = containers
 	ns.LastSeen = time.Now()
 }

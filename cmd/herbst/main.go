@@ -788,9 +788,11 @@ func main() {
 		}
 
 		if node, exists := connectedNodes[agentCfg.Name]; exists {
-			agent.Connected = true
-			lastSeen := node.LastSeen.Format(time.RFC3339)
-			agent.LastSeen = &lastSeen
+			agent.Connected = node.Connected
+			if !node.LastSeen.IsZero() {
+				lastSeen := node.LastSeen.Format(time.RFC3339)
+				agent.LastSeen = &lastSeen
+			}
 			agent.Containers = node.Containers
 		}
 

@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"herbst/internal/config"
 	"herbst/internal/proto"
@@ -68,7 +69,10 @@ func NewServer(cfg *config.Config, reg *Registry) *Server {
 }
 
 func (s *Server) HandleWS(w http.ResponseWriter, r *http.Request) {
-	c, err := websocket.Accept(w, r, nil)
+	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		// Allow connections from any origin for cross-network access
+		InsecureSkipVerify: true,
+	})
 	if err != nil {
 		log.Println("ws accept:", err)
 		return
@@ -77,6 +81,23 @@ func (s *Server) HandleWS(w http.ResponseWriter, r *http.Request) {
 
 	// eigener Context, nicht r.Context()
 	ctx := context.Background()
+
+	// Set up ping/pong keepalive to prevent proxy timeouts
+	// This sends pings every 15 seconds to keep the connection alive
+	go func() {
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := c.Ping(ctx); err != nil {
+					return
+				}
+			}
+		}
+	}()
 
 	// ---- HELLO lesen ----
 	_, data, err := c.Read(ctx)
@@ -100,6 +121,15 @@ func (s *Server) HandleWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("Agent connected: %s (kind=%s)\n", hello.NodeName, hello.Kind)
+
+	// Mark agent as connected
+	s.reg.SetConnected(hello.NodeName, hello.Kind, true)
+
+	// Mark agent as disconnected when the connection closes
+	defer func() {
+		log.Printf("Agent disconnected: %s\n", hello.NodeName)
+		s.reg.SetConnected(hello.NodeName, hello.Kind, false)
+	}()
 
 	// ---- Message-Loop ----
 	for {
