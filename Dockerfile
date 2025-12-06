@@ -1,11 +1,11 @@
 # Build frontend
-FROM node:22-bullseye AS frontend-builder
+FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app/web
 
-# Install dependencies
-COPY web/package.json web/package-lock.json ./
-RUN npm ci --silent
+# Install dependencies (no lockfile to avoid platform-locked optional binaries)
+COPY web/package.json ./
+RUN npm install --no-optional --silent
 
 # Build frontend
 COPY web/ ./
