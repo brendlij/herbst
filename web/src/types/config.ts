@@ -5,6 +5,11 @@ export type Service = {
   onlineBadge?: boolean;
 };
 
+export type ServiceSection = {
+  title: string;
+  services: Service[];
+};
+
 export type BackgroundConfig = {
   image?: string;
   blur?: number;
@@ -54,6 +59,7 @@ export type HerbstConfig = {
   weather: WeatherConfig;
   docker: DockerConfig;
   services: Service[];
+  sections: ServiceSection[];
   theme: string;
   themeVars: Record<string, string>;
 };

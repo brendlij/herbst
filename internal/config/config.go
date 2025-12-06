@@ -33,12 +33,25 @@ type Weather struct {
 	Units    string  `toml:"units"    json:"units"`
 }
 
-// Docker holds Docker integration configuration
-type Docker struct {
-	Enabled    *bool               `toml:"enabled"     json:"enabled"`    // Pointer to detect if explicitly set
-	Host       string              `toml:"host"        json:"host"`       // External host URL for agents (e.g. "192.168.1.100:8080")
-	SocketPath string              `toml:"socket-path" json:"socketPath"`
-	Agents     []DockerAgentConfig `toml:"agents"      json:"agents"`     // [[docker.agents]]
+// DockerLocal holds local Docker integration configuration
+type DockerLocal struct {
+	Enabled    *bool  `toml:"enabled"     json:"enabled"`    // Pointer to detect if explicitly set
+	SocketPath string `toml:"socket-path" json:"socketPath"`
+}
+
+// IsEnabled returns true if local Docker is enabled (auto-detects if not explicitly set)
+func (d *DockerLocal) IsEnabled() bool {
+	// If explicitly set in config, use that value
+	if d.Enabled != nil {
+		return *d.Enabled
+	}
+	// Auto-detect: check if socket exists
+	socketPath := d.SocketPath
+	if socketPath == "" {
+		socketPath = "/var/run/docker.sock"
+	}
+	_, err := os.Stat(socketPath)
+	return err == nil
 }
 
 // DockerAgentConfig represents a remote docker agent node
@@ -47,20 +60,12 @@ type DockerAgentConfig struct {
 	Token string `toml:"token" json:"token"`
 }
 
-
-
-// IsEnabled returns true if Docker is enabled (auto-detects if not explicitly set)
-func (d *Docker) IsEnabled() bool {
-	// If explicitly set in config, use that value
-	if d.Enabled != nil {
-		return *d.Enabled
-	}
-	// Auto-detect: check if socket exists
-	if d.SocketPath == "" {
-		d.SocketPath = "/var/run/docker.sock"
-	}
-	_, err := os.Stat(d.SocketPath)
-	return err == nil
+// Docker holds all Docker integration configuration
+type Docker struct {
+	Local         DockerLocal         `toml:"local"          json:"local"`         // [docker.local]
+	Host          string              `toml:"host"           json:"host"`          // External host URL for agents (e.g. "192.168.1.100:8080")
+	AgentProtocol string              `toml:"agent-protocol" json:"agentProtocol"` // ws or wss (default: ws)
+	Agents        []DockerAgentConfig `toml:"agent"          json:"agents"`        // [[docker.agent]]
 }
 
 // UI holds UI-related configuration
@@ -77,14 +82,21 @@ type Service struct {
 	OnlineBadge bool   `toml:"online-badge" json:"onlineBadge"`
 }
 
+// ServiceSection represents a group of services with a title
+type ServiceSection struct {
+	Title    string    `toml:"title"    json:"title"`
+	Services []Service `toml:"service" json:"services"`
+}
+
 // Config is the main configuration structure
 type Config struct {
-	Title    string    `toml:"title"    json:"title"`
-	Theme    string    `toml:"theme"    json:"theme"`
-	UI       UI        `toml:"ui"       json:"ui"`
-	Weather  Weather   `toml:"weather"  json:"weather"`
-	Docker   Docker    `toml:"docker"   json:"docker"`
-	Services []Service `toml:"services" json:"services"`
+	Title    string           `toml:"title"    json:"title"`
+	Theme    string           `toml:"theme"    json:"theme"`
+	UI       UI               `toml:"ui"       json:"ui"`
+	Weather  Weather          `toml:"weather"  json:"weather"`
+	Docker   Docker           `toml:"docker"   json:"docker"`
+	Services []Service        `toml:"service" json:"services"` // Flat services (legacy)
+	Sections []ServiceSection `toml:"section" json:"sections"` // Grouped services
 }
 
 // EnsureAndLoadConfig loads the config file, creating it with defaults if it doesn't exist.
@@ -147,11 +159,13 @@ func expandEnvVars(cfg *Config) {
 	cfg.Weather.Location = expand(cfg.Weather.Location)
 
 	// Expand in Docker config
-	cfg.Docker.SocketPath = expand(cfg.Docker.SocketPath)
+	cfg.Docker.Local.SocketPath = expand(cfg.Docker.Local.SocketPath)
+	cfg.Docker.Host = expand(cfg.Docker.Host)
+	cfg.Docker.AgentProtocol = expand(cfg.Docker.AgentProtocol)
 
 	// Expand in Docker agent configs
 	for i := range cfg.Docker.Agents {
-		cfg.Docker.Agents[i].Name  = expand(cfg.Docker.Agents[i].Name)
+		cfg.Docker.Agents[i].Name = expand(cfg.Docker.Agents[i].Name)
 		cfg.Docker.Agents[i].Token = expand(cfg.Docker.Agents[i].Token)
 	}
 
@@ -164,6 +178,16 @@ func expandEnvVars(cfg *Config) {
 		cfg.Services[i].Name = expand(cfg.Services[i].Name)
 		cfg.Services[i].URL = expand(cfg.Services[i].URL)
 		cfg.Services[i].Icon = expand(cfg.Services[i].Icon)
+	}
+
+	// Expand in Sections
+	for i := range cfg.Sections {
+		cfg.Sections[i].Title = expand(cfg.Sections[i].Title)
+		for j := range cfg.Sections[i].Services {
+			cfg.Sections[i].Services[j].Name = expand(cfg.Sections[i].Services[j].Name)
+			cfg.Sections[i].Services[j].URL = expand(cfg.Sections[i].Services[j].URL)
+			cfg.Sections[i].Services[j].Icon = expand(cfg.Sections[i].Services[j].Icon)
+		}
 	}
 
 	// Expand title and theme

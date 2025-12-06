@@ -7,7 +7,7 @@ services:
     # Find your IDs with: id -u && id -g
     # user: "1000:1000"
     ports:
-      - "8080:8080"
+      - "8080:8080" # External 8088 → Internal 8080
     volumes:
       # Config directory (contains config.toml and themes.toml)
       # Use ./config for portable setup, or /etc/herbst/config for system-wide
@@ -24,3 +24,5 @@ services:
       # Optional: Add your environment variables for configuration file here
       # - OPENWEATHER_API_KEY=your-api-key
       # - HOMEASSISTANT_URL=http://homeassistant.local:8123
+      # - HERBST_HOST=192.168.1.100:8080   # For remote docker agents
+      # - HERBST_AGENT_PROTOCOL=wss        # Use wss for SSL/TLS (default: ws)

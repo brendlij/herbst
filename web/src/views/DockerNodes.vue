@@ -21,6 +21,7 @@ interface DockerAgent {
 const agents = ref<DockerAgent[]>([]);
 const loading = ref(true);
 const serverHost = ref(window.location.host);
+const agentProtocol = ref("ws");
 const copiedAgent = ref<string | null>(null);
 const singleLineMode = ref<Record<string, boolean>>({});
 let pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -35,6 +36,10 @@ async function loadAgents() {
     if (json.serverHost) {
       serverHost.value = json.serverHost;
     }
+    // Use protocol from backend config (docker.agent-protocol) if available
+    if (json.agentProtocol) {
+      agentProtocol.value = json.agentProtocol;
+    }
   } catch (e) {
     console.error("Failed to load docker agents:", e);
   } finally {
@@ -44,12 +49,12 @@ async function loadAgents() {
 
 function getCommand(agent: DockerAgent, singleLine: boolean): string {
   if (singleLine) {
-    return `docker run -d --name herbst-docker-agent -v /var/run/docker.sock:/var/run/docker.sock -e HERBST_URL="ws://${serverHost.value}/api/agents/ws" -e HERBST_TOKEN="${agent.token}" -e NODE_NAME="${agent.name}" ghcr.io/brendlij/herbst-docker-agent:latest`;
+    return `docker run -d --name herbst-docker-agent -v /var/run/docker.sock:/var/run/docker.sock -e HERBST_URL="${agentProtocol.value}://${serverHost.value}/api/agents/ws" -e HERBST_TOKEN="${agent.token}" -e NODE_NAME="${agent.name}" ghcr.io/brendlij/herbst-docker-agent:latest`;
   }
   return `docker run -d \\
   --name herbst-docker-agent \\
   -v /var/run/docker.sock:/var/run/docker.sock \\
-  -e HERBST_URL="ws://${serverHost.value}/api/agents/ws" \\
+  -e HERBST_URL="${agentProtocol.value}://${serverHost.value}/api/agents/ws" \\
   -e HERBST_TOKEN="${agent.token}" \\
   -e NODE_NAME="${agent.name}" \\
   ghcr.io/brendlij/herbst-docker-agent:latest`;

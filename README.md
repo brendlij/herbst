@@ -38,7 +38,7 @@ services:
     # Find your IDs with: id -u && id -g
     # user: "1000:1000"
     ports:
-      - "8080:8080"
+      - "8080:8080" # External 8088 → Internal 8080
     volumes:
       # Config directory (contains config.toml and themes.toml)
       - ./config:/app/config
@@ -52,6 +52,8 @@ services:
       - TZ=Europe/Berlin
       # Optional: Add environment variables for config file substitution
       # - OPENWEATHER_API_KEY=your-api-key
+      # - HERBST_HOST=192.168.1.100:8080   # For remote docker agents
+      # - HERBST_AGENT_PROTOCOL=wss        # Use wss for SSL/TLS (default: ws)
 ```
 
 ## Configuration

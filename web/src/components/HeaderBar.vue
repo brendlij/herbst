@@ -221,6 +221,7 @@ onUnmounted(() => {
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   border-radius: 2em;
+  margin-bottom: 3rem;
 
   /* Backdrop blur for transparent themes */
   backdrop-filter: blur(12px);

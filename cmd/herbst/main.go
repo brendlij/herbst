@@ -40,13 +40,14 @@ type DockerAPIConfig struct {
 
 // APIConfig is the response structure for /api/config
 type APIConfig struct {
-	Title     string            `json:"title"`
-	UI        config.UI         `json:"ui"`
-	Weather   config.Weather    `json:"weather"`
-	Docker    DockerAPIConfig   `json:"docker"`
-	Services  []config.Service  `json:"services"`
-	Theme     string            `json:"theme"`
-	ThemeVars map[string]string `json:"themeVars"`
+	Title     string                  `json:"title"`
+	UI        config.UI               `json:"ui"`
+	Weather   config.Weather          `json:"weather"`
+	Docker    DockerAPIConfig         `json:"docker"`
+	Services  []config.Service        `json:"services"`
+	Sections  []config.ServiceSection `json:"sections"`
+	Theme     string                  `json:"theme"`
+	ThemeVars map[string]string       `json:"themeVars"`
 }
 
 // SSEBroker manages Server-Sent Events connections
@@ -141,11 +142,12 @@ func (cs *ConfigStore) Reload() error {
 		UI:      cfg.UI,
 		Weather: cfg.Weather,
 		Docker: DockerAPIConfig{
-			Enabled:          cfg.Docker.IsEnabled(),
-			SocketPath:       cfg.Docker.SocketPath,
+			Enabled:          cfg.Docker.Local.IsEnabled(),
+			SocketPath:       cfg.Docker.Local.SocketPath,
 			AgentsConfigured: len(cfg.Docker.Agents) > 0,
 		},
 		Services:  cfg.Services,
+		Sections:  cfg.Sections,
 		Theme:     cfg.Theme,
 		ThemeVars: activeTheme.Vars,
 	}
@@ -197,11 +199,12 @@ func main() {
 			UI:      cfg.UI,
 			Weather: cfg.Weather,
 			Docker: DockerAPIConfig{
-				Enabled:          cfg.Docker.IsEnabled(),
-				SocketPath:       cfg.Docker.SocketPath,
+				Enabled:          cfg.Docker.Local.IsEnabled(),
+				SocketPath:       cfg.Docker.Local.SocketPath,
 				AgentsConfigured: len(cfg.Docker.Agents) > 0,
 			},
 			Services:  cfg.Services,
+			Sections:  cfg.Sections,
 			Theme:     cfg.Theme,
 			ThemeVars: activeTheme.Vars,
 		},
@@ -750,10 +753,11 @@ func main() {
 		// Kein Panic, sondern sauberer Fehler-Response
 		w.WriteHeader(http.StatusInternalServerError)
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"enabled":    currentCfg.Docker.Enabled,
-			"agents":     []interface{}{},
-			"serverHost": r.Host,
-			"error":      "failed to load config",
+			"enabled":       currentCfg.Docker.Enabled,
+			"agents":        []interface{}{},
+			"serverHost":    r.Host,
+			"agentProtocol": "ws",
+			"error":         "failed to load config",
 		})
 		return
 	}
@@ -766,12 +770,18 @@ func main() {
 		Containers interface{} `json:"containers"`
 	}
 
-	agents := make([]AgentResponse, 0, len(cfg.Docker.Agents))
+	agentsList := make([]AgentResponse, 0, len(cfg.Docker.Agents))
 
 	for _, agentCfg := range cfg.Docker.Agents {
+		// Use configured token or generate one
+		token := agentCfg.Token
+		if token == "" {
+			token = agents.GenerateToken(agentCfg.Name)
+		}
+
 		agent := AgentResponse{
 			Name:       agentCfg.Name,
-			Token:      agentCfg.Token,
+			Token:      token,
 			Connected:  false,
 			LastSeen:   nil,
 			Containers: []interface{}{},
@@ -784,7 +794,7 @@ func main() {
 			agent.Containers = node.Containers
 		}
 
-		agents = append(agents, agent)
+		agentsList = append(agentsList, agent)
 	}
 
 	// Host für den Docker-Run-Command
@@ -793,10 +803,17 @@ func main() {
 		hostURL = r.Host
 	}
 
+	// Protocol for WebSocket connection (ws or wss)
+	protocol := cfg.Docker.AgentProtocol
+	if protocol == "" {
+		protocol = "ws"
+	}
+
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"enabled":    currentCfg.Docker.Enabled,
-		"agents":     agents,
-		"serverHost": hostURL,
+		"enabled":       currentCfg.Docker.Enabled,
+		"agents":        agentsList,
+		"serverHost":    hostURL,
+		"agentProtocol": protocol,
 	})
 })
 

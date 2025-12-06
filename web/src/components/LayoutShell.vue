@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import FooterBar from "./FooterBar.vue";
 import HeaderBar from "./HeaderBar.vue";
-import SearchBar from "./SearchBar.vue";
 import type { WeatherConfig, DockerConfig } from "../types/config";
 
 defineProps<{
@@ -13,7 +12,6 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: "tabChange", tab: string): void;
-  (e: "search", query: string): void;
 }>();
 </script>
 
@@ -29,9 +27,6 @@ const emit = defineEmits<{
         :docker-agents-configured="docker.agentsConfigured"
         @tab-change="emit('tabChange', $event)"
       />
-
-      <!-- Search Bar outside the header -->
-      <SearchBar @search="emit('search', $event)" />
 
       <main class="main">
         <slot />
