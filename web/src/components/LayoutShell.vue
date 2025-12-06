@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import FooterBar from "./FooterBar.vue";
-import HeaderBar from "./HeaderBar.vue";
+import * as FooterBar from "./FooterBar.vue";
+import * as HeaderBar from "./HeaderBar.vue";
 import type { WeatherConfig, DockerConfig } from "../types/config";
 
 defineProps<{
