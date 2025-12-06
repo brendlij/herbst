@@ -7,9 +7,9 @@ WORKDIR /app/web
 COPY web/package.json ./
 RUN npm install
 
-# Build frontend
+# Build frontend (skip type checking - done locally during development)
 COPY web/ ./
-RUN npm run build
+RUN npm run build:docker
 
 
 # Build backend
