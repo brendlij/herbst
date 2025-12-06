@@ -13,6 +13,8 @@ herbst
 herbst.exe
 web/dist
 web/node_modules
+web/package-lock.json
+web/bun.lock
 
 # Runtime files
 runtime/

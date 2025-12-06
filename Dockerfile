@@ -3,8 +3,8 @@ FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app/web
 
-# Install dependencies
-COPY web/package.json web/package-lock.json* web/bun.lock* ./
+# Install dependencies (lockfiles excluded via .dockerignore for clean platform-native install)
+COPY web/package.json ./
 RUN npm install
 
 # Build frontend
