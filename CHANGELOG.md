@@ -1,6 +1,18 @@
 # Changelog
 
-## [0.2.0] - 2025-12-06
+## [0.2.3] - 2025-12-07
+
+### Fixed
+
+- **Agent connection stability**: Added WebSocket ping/pong keepalive to prevent proxy timeouts and broken pipe errors
+- **Agent connection tracking**: Properly track connected/disconnected state for remote Docker agents
+- **Favicon**: Custom Herbst leaf icon with beige background for better visibility
+
+### Changed
+
+- Removed unused Vite default assets (vue.svg, vite.svg)
+
+## [0.2.2] - 2025-12-06
 
 ### Added
 
