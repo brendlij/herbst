@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4] - 2025-12-07
+
+### Fixed
+
+- **Agent token reload**: Agent tokens now properly reload when config changes - no more server restart needed after adding agents
+- **WebSocket keepalive**: Improved ping timing and context handling for more stable connections
+
 ## [0.2.3] - 2025-12-07
 
 ### Added
