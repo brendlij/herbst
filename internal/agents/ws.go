@@ -48,24 +48,35 @@ func GenerateToken(agentName string) string {
 type Server struct {
 	reg     *Registry
 	allowed map[string]string // nodeName -> token
+	mu      sync.RWMutex      // protects allowed map
 }
 
 func NewServer(cfg *config.Config, reg *Registry) *Server {
-	allowed := make(map[string]string)
+	s := &Server{
+		reg:     reg,
+		allowed: make(map[string]string),
+	}
+	s.ReloadConfig(cfg)
+	return s
+}
+
+// ReloadConfig updates the allowed agents from config
+func (s *Server) ReloadConfig(cfg *config.Config) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Clear and rebuild allowed map
+	s.allowed = make(map[string]string)
 	for _, a := range cfg.Docker.Agents {
 		if a.Token != "" {
 			// Use configured token if provided
-			allowed[a.Name] = a.Token
+			s.allowed[a.Name] = a.Token
 		} else {
 			// Generate token from agent name + server secret
-			allowed[a.Name] = GenerateToken(a.Name)
+			s.allowed[a.Name] = GenerateToken(a.Name)
 		}
 	}
-
-	return &Server{
-		reg:     reg,
-		allowed: allowed,
-	}
+	log.Printf("Agent config reloaded: %d agents configured", len(s.allowed))
 }
 
 func (s *Server) HandleWS(w http.ResponseWriter, r *http.Request) {
@@ -77,27 +88,12 @@ func (s *Server) HandleWS(w http.ResponseWriter, r *http.Request) {
 		log.Println("ws accept:", err)
 		return
 	}
+
+	// Create a cancellable context for this connection
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer c.Close(websocket.StatusNormalClosure, "bye")
-
-	// eigener Context, nicht r.Context()
-	ctx := context.Background()
-
-	// Set up ping/pong keepalive to prevent proxy timeouts
-	// This sends pings every 15 seconds to keep the connection alive
-	go func() {
-		ticker := time.NewTicker(15 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				if err := c.Ping(ctx); err != nil {
-					return
-				}
-			}
-		}
-	}()
 
 	// ---- HELLO lesen ----
 	_, data, err := c.Read(ctx)
@@ -113,7 +109,9 @@ func (s *Server) HandleWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Token-Check
+	s.mu.RLock()
 	expectedToken, ok := s.allowed[hello.NodeName]
+	s.mu.RUnlock()
 	if !ok || expectedToken != hello.Token {
 		log.Printf("unauthorized agent: %s\n", hello.NodeName)
 		c.Close(websocket.StatusPolicyViolation, "unauthorized")
@@ -129,6 +127,24 @@ func (s *Server) HandleWS(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		log.Printf("Agent disconnected: %s\n", hello.NodeName)
 		s.reg.SetConnected(hello.NodeName, hello.Kind, false)
+	}()
+
+	// Set up ping/pong keepalive to prevent proxy timeouts
+	// This sends pings every 5 seconds to keep the connection alive
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := c.Ping(ctx); err != nil {
+					log.Printf("ping failed for %s: %v\n", hello.NodeName, err)
+					return
+				}
+			}
+		}
 	}()
 
 	// ---- Message-Loop ----

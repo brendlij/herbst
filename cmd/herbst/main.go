@@ -104,11 +104,12 @@ func (b *SSEBroker) Notify(event string) {
 
 // ConfigStore holds the current config with thread-safe access
 type ConfigStore struct {
-	mu         sync.RWMutex
-	apiConfig  APIConfig
-	configPath string
-	themesPath string
-	broker     *SSEBroker
+	mu          sync.RWMutex
+	apiConfig   APIConfig
+	configPath  string
+	themesPath  string
+	broker      *SSEBroker
+	agentServer *agents.Server
 }
 
 func (cs *ConfigStore) Get() APIConfig {
@@ -152,6 +153,11 @@ func (cs *ConfigStore) Reload() error {
 		ThemeVars: activeTheme.Vars,
 	}
 
+	// Reload agent server config (updates allowed tokens)
+	if cs.agentServer != nil {
+		cs.agentServer.ReloadConfig(cfg)
+	}
+
 	log.Printf("Config reloaded - Theme: %s", activeTheme.Name)
 
 	// Notify connected clients
@@ -192,6 +198,10 @@ func main() {
 	broker := NewSSEBroker()
 	go broker.Run()
 
+	// Initialize agent registry and server
+	registry := agents.NewRegistry()
+	agentServer := agents.NewServer(cfg, registry)
+
 	// Initialize config store
 	store := &ConfigStore{
 		apiConfig: APIConfig{
@@ -208,16 +218,14 @@ func main() {
 			Theme:     cfg.Theme,
 			ThemeVars: activeTheme.Vars,
 		},
-		configPath: configPath,
-		themesPath: themesPath,
-		broker:     broker,
+		configPath:  configPath,
+		themesPath:  themesPath,
+		broker:      broker,
+		agentServer: agentServer,
 	}
 
 	// Start file watcher
 	go watchFiles(store, configPath, themesPath)
-
-	registry := agents.NewRegistry()
-	agentServer := agents.NewServer(cfg, registry)
 
 	mux := http.NewServeMux()
 
