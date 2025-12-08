@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.5] - 2025-12-09
+
+### Added
+
+- **System monitoring tab**: View CPU, RAM, disk usage, and uptime for the herbst host
+  - Configurable via `[system]` section in config.toml
+  - Custom disk path support for monitoring specific mounts
+  - Real-time stats with auto-refresh every 3 seconds
+- **Comprehensive README**: Full configuration reference for all settings
+
 ## [0.2.4] - 2025-12-07
 
 ### Fixed
