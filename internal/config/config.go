@@ -68,6 +68,17 @@ type Docker struct {
 	Agents        []DockerAgentConfig `toml:"agent"          json:"agents"`        // [[docker.agent]]
 }
 
+// System holds system monitoring configuration
+type System struct {
+	Enabled  bool   `toml:"enabled"   json:"enabled"`
+	DiskPath string `toml:"disk-path" json:"diskPath"` // Which disk/partition to monitor (default: "/" or "C:")
+}
+
+// IsEnabled returns true if system monitoring is enabled (default: true)
+func (s *System) IsEnabled() bool {
+	return s.Enabled
+}
+
 // UI holds UI-related configuration
 type UI struct {
 	Background Background `toml:"background" json:"background"`
@@ -95,6 +106,7 @@ type Config struct {
 	UI       UI               `toml:"ui"       json:"ui"`
 	Weather  Weather          `toml:"weather"  json:"weather"`
 	Docker   Docker           `toml:"docker"   json:"docker"`
+	System   System           `toml:"system"   json:"system"`
 	Services []Service        `toml:"service" json:"services"` // Flat services (legacy)
 	Sections []ServiceSection `toml:"section" json:"sections"` // Grouped services
 }

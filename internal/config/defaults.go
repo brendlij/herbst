@@ -67,6 +67,16 @@ agent-protocol = "${HERBST_AGENT_PROTOCOL}"
 
 
 # ┌───────────────────────────────────────────────────────────────────────────┐
+# │  SYSTEM MONITORING                                                        │
+# │  Shows CPU, RAM, disk usage, and uptime for the herbst host               │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+[system]
+enabled = true
+disk-path = "/"  # Path to monitor disk usage (e.g., "/" or "/mnt/data")
+
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
 # │  SERVICES                                                                 │
 # │  Group services into sections with [[section]]                            │
 # └───────────────────────────────────────────────────────────────────────────┘

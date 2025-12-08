@@ -33,6 +33,13 @@ const emit = defineEmits<{
     >
       Docker Nodes
     </div>
+    <div
+      class="tab"
+      :class="{ active: activeTab === 'system' }"
+      @click="emit('tabChange', 'system')"
+    >
+      System
+    </div>
   </nav>
 </template>
 

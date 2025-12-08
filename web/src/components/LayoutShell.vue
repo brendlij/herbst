@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import FooterBar from "./FooterBar.vue";
 import HeaderBar from "./HeaderBar.vue";
-import type { WeatherConfig, DockerConfig } from "../types/config";
+import type {
+  WeatherConfig,
+  DockerConfig,
+  SystemConfig,
+} from "../types/config";
 
 defineProps<{
   title: string;
   weather: WeatherConfig;
   docker: DockerConfig;
+  system: SystemConfig;
   activeTab: string;
 }>();
 
@@ -25,6 +30,7 @@ const emit = defineEmits<{
         :active-tab="activeTab"
         :docker-enabled="docker.enabled"
         :docker-agents-configured="docker.agentsConfigured"
+        :system-enabled="system.enabled"
         @tab-change="emit('tabChange', $event)"
       />
 

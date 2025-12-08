@@ -18,6 +18,10 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/joho/godotenv"
 	"github.com/pelletier/go-toml/v2"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v3/mem"
 
 	"herbst/internal/agents"
 	"herbst/internal/config"
@@ -38,12 +42,19 @@ type DockerAPIConfig struct {
 	AgentsConfigured bool   `json:"agentsConfigured"`
 }
 
+// SystemAPIConfig is the resolved System config for API responses
+type SystemAPIConfig struct {
+	Enabled  bool   `json:"enabled"`
+	DiskPath string `json:"diskPath"`
+}
+
 // APIConfig is the response structure for /api/config
 type APIConfig struct {
 	Title     string                  `json:"title"`
 	UI        config.UI               `json:"ui"`
 	Weather   config.Weather          `json:"weather"`
 	Docker    DockerAPIConfig         `json:"docker"`
+	System    SystemAPIConfig         `json:"system"`
 	Services  []config.Service        `json:"services"`
 	Sections  []config.ServiceSection `json:"sections"`
 	Theme     string                  `json:"theme"`
@@ -147,6 +158,10 @@ func (cs *ConfigStore) Reload() error {
 			SocketPath:       cfg.Docker.Local.SocketPath,
 			AgentsConfigured: len(cfg.Docker.Agents) > 0,
 		},
+		System: SystemAPIConfig{
+			Enabled:  cfg.System.Enabled,
+			DiskPath: cfg.System.DiskPath,
+		},
 		Services:  cfg.Services,
 		Sections:  cfg.Sections,
 		Theme:     cfg.Theme,
@@ -212,6 +227,10 @@ func main() {
 				Enabled:          cfg.Docker.Local.IsEnabled(),
 				SocketPath:       cfg.Docker.Local.SocketPath,
 				AgentsConfigured: len(cfg.Docker.Agents) > 0,
+			},
+			System: SystemAPIConfig{
+				Enabled:  cfg.System.Enabled,
+				DiskPath: cfg.System.DiskPath,
 			},
 			Services:  cfg.Services,
 			Sections:  cfg.Sections,
@@ -734,6 +753,98 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"enabled":    true,
 			"containers": result,
+		})
+	})
+
+	// API endpoint: GET /api/system/stats
+	// Returns system metrics (CPU, memory, disk, uptime)
+	mux.HandleFunc("/api/system/stats", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+
+		// Get CPU usage (average over 500ms)
+		cpuPercent, err := cpu.Percent(500*time.Millisecond, false)
+		cpuUsage := 0.0
+		if err == nil && len(cpuPercent) > 0 {
+			cpuUsage = cpuPercent[0]
+		}
+
+		// Get CPU info
+		cpuInfo, _ := cpu.Info()
+		cpuModel := ""
+		cpuCores := 0
+		if len(cpuInfo) > 0 {
+			cpuModel = cpuInfo[0].ModelName
+			cpuCores = int(cpuInfo[0].Cores)
+		}
+		cpuCount, _ := cpu.Counts(true) // logical cores
+
+		// Get memory info
+		memInfo, _ := mem.VirtualMemory()
+		memTotal := uint64(0)
+		memUsed := uint64(0)
+		memPercent := 0.0
+		if memInfo != nil {
+			memTotal = memInfo.Total
+			memUsed = memInfo.Used
+			memPercent = memInfo.UsedPercent
+		}
+
+		// Get disk info (from configured path)
+		diskPath := store.Get().System.DiskPath
+		if diskPath == "" {
+			diskPath = "/"
+		}
+		diskInfo, _ := disk.Usage(diskPath)
+		diskTotal := uint64(0)
+		diskUsed := uint64(0)
+		diskPercent := 0.0
+		if diskInfo != nil {
+			diskTotal = diskInfo.Total
+			diskUsed = diskInfo.Used
+			diskPercent = diskInfo.UsedPercent
+		}
+
+		// Get host info
+		hostInfo, _ := host.Info()
+		hostname := ""
+		uptime := uint64(0)
+		os := ""
+		platform := ""
+		if hostInfo != nil {
+			hostname = hostInfo.Hostname
+			uptime = hostInfo.Uptime
+			os = hostInfo.OS
+			platform = hostInfo.Platform
+		}
+
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"cpu": map[string]interface{}{
+				"percent": cpuUsage,
+				"model":   cpuModel,
+				"cores":   cpuCores,
+				"threads": cpuCount,
+			},
+			"memory": map[string]interface{}{
+				"total":   memTotal,
+				"used":    memUsed,
+				"percent": memPercent,
+			},
+			"disk": map[string]interface{}{
+				"total":   diskTotal,
+				"used":    diskUsed,
+				"percent": diskPercent,
+			},
+			"host": map[string]interface{}{
+				"hostname": hostname,
+				"uptime":   uptime,
+				"os":       os,
+				"platform": platform,
+			},
 		})
 	})
 

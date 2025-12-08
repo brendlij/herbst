@@ -9,6 +9,7 @@ const props = defineProps<{
   activeTab: string;
   dockerEnabled: boolean;
   dockerAgentsConfigured: boolean;
+  systemEnabled: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -175,6 +176,14 @@ onUnmounted(() => {
       >
         <div>Docker</div>
         <div class="tab-subtitle">Agents</div>
+      </div>
+      <div
+        v-if="systemEnabled"
+        class="tab"
+        :class="{ active: activeTab === 'system' }"
+        @click="emit('tabChange', 'system')"
+      >
+        <div>System</div>
       </div>
       <div
         class="tab"

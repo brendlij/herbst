@@ -39,6 +39,11 @@ export type DockerConfig = {
   agentsConfigured: boolean;
 };
 
+export type SystemConfig = {
+  enabled: boolean;
+  diskPath: string;
+};
+
 export type DockerContainer = {
   id: string;
   name: string;
@@ -58,6 +63,7 @@ export type HerbstConfig = {
   ui: UIConfig;
   weather: WeatherConfig;
   docker: DockerConfig;
+  system: SystemConfig;
   services: Service[];
   sections: ServiceSection[];
   theme: string;
