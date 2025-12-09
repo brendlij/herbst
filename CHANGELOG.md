@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.6] - 2025-12-09
+
+### Changed
+
+- **Config editor**: Replaced custom TOML editor with [simple-code-editor](https://github.com/justcaliturner/simple-code-editor) for better syntax highlighting, also because own one was glitched out.
+- **Keyboard shortcut**: Added Ctrl+S / Cmd+S to save config (same as clicking "Save & Reload")
+
 ## [0.2.5] - 2025-12-09
 
 ### Added

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import TomlEditor from "../components/TomlEditor.vue";
+import { ref, onMounted, onUnmounted } from "vue";
+// @ts-ignore - no types available
+import CodeEditor from "simple-code-editor";
 
 type ConfigFile = "config" | "themes";
 
@@ -20,8 +21,21 @@ function getApiPath(file: ConfigFile): string {
   return file === "config" ? "/api/config/raw" : "/api/themes/raw";
 }
 
+// Handle Ctrl+S / Cmd+S keyboard shortcut
+function handleKeydown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+    e.preventDefault();
+    saveFile();
+  }
+}
+
 onMounted(async () => {
   await loadFile(activeFile.value);
+  window.addEventListener("keydown", handleKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("keydown", handleKeydown);
 });
 
 async function loadFile(file: ConfigFile) {
@@ -72,11 +86,6 @@ async function switchFile(newFile: ConfigFile) {
   activeFile.value = newFile;
   await loadFile(newFile);
 }
-
-function onContentChange(value: string) {
-  content.value = value;
-  hasUnsavedChanges.value = true;
-}
 </script>
 
 <template>
@@ -114,9 +123,19 @@ function onContentChange(value: string) {
       </div>
     </div>
     <div class="editor-container">
-      <TomlEditor
-        :model-value="content"
-        @update:model-value="onContentChange"
+      <CodeEditor
+        v-model="content"
+        :languages="[['ini', 'TOML']]"
+        :line-nums="true"
+        :wrap="false"
+        :header="false"
+        :copy-code="false"
+        theme="atom-one-dark"
+        width="100%"
+        height="100%"
+        font-size="14px"
+        border-radius="8px"
+        @input="hasUnsavedChanges = true"
       />
     </div>
   </div>
