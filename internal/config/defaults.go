@@ -8,7 +8,7 @@ const DefaultConfigTOML = `# ╔════════════════
 # ╚═══════════════════════════════════════════════════════════════════════════╝
 
 title = "herbst – homelab"
-theme = "autumn"  # Available: autumn, earthy, bright, glass
+theme = "Autumn"  # Available: Autumn, Aarthy, Bright, Glass, Meadow, Noir, Arctic, Blossom, Ember, Nebula
 
 
 # ┌───────────────────────────────────────────────────────────────────────────┐
