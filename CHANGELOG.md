@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.7] - 2025-12-10
+
+### Added
+
+- **Version display**: Shows app version in footer (automatically set from Git tag during Docker build)
+- **Clock format config**: Configure time (12h/24h) and date format (short/numeric) via `[ui.clock]` in config.toml
+
+### Changed
+
+- **Settings icon**: Replaced "Configuration" tab text with minimal cog icon, moved to header right side
+- **Improved padding**: Better spacing for all views with consistent left/right padding
+- **Section spacing**: Increased gap between service sections for clearer visual separation
+
+### Fixed
+
+- **System tab loading speed**: CPU stats now cached in background - tab loads instantly instead of waiting 500ms
+
 ## [0.2.6] - 2025-12-09
 
 ### Changed
