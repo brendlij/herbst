@@ -9,6 +9,10 @@
 <p align="center">A cozy, pastel-minimal homelab dashboard.<br>
 No database. Just TOML, a tiny Go backend, and soft autumn vibes.</p>
 
+<p align="center">
+  <img src="/docs/images/image.png" alt="herbst dashboard screenshot" width="800" />
+</p>
+
 > [!WARNING]
 > herbst is in active development — expect bugs, missing features, and occasional UI teleportation :D
 > See [CHANGELOG.md](CHANGELOG.md) for recent changes.
@@ -25,6 +29,8 @@ No database. Just TOML, a tiny Go backend, and soft autumn vibes.</p>
 - Multiple themes (earthy, bright, autumn, glass)
 - In-browser config editor with live reload
 - Background image support with blur
+- **Configurable clock format** — 12h/24h time, short/numeric date
+- **Version display** in footer (auto-set from Git tag on Docker builds)
 - No database, just TOML files
 
 ## Quick Start
@@ -84,6 +90,10 @@ font = ""  # Custom font name (e.g., "Inter", "Fira Code")
 [ui.background]
 image = ""  # Filename from /static (e.g., "bg.jpg") or full URL
 blur = 0    # Blur amount in pixels
+
+[ui.clock]
+time-format = "24h"    # "24h" or "12h"
+date-format = "short"  # "short" (3. Dez 2025) or "numeric" (03.12.2025)
 ```
 
 ### Weather (OpenWeatherMap)
@@ -152,17 +162,129 @@ url = "https://nas.local"
 online-badge = true
 ```
 
-For local development, config files are in `./runtime/config/`.
+---
 
 ## Development
 
-```bash
-# Backend
-go run ./cmd/herbst
+### Prerequisites
 
-# Frontend
-cd web && npm install && npm run dev
+- **Go** 1.21+ ([install](https://go.dev/doc/install))
+- **Node.js** 20+ ([install](https://nodejs.org/))
+- **Bun** (optional, faster than npm) ([install](https://bun.sh/))
+
+### Setup
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/brendlij/herbst.git
+   cd herbst
+   ```
+
+2. **Create a `.env` file** in the project root (required for local dev):
+
+   ```env
+   HERBST_CONFIG_DIR=./config
+   HERBST_STATIC_DIR=./static
+   ```
+
+   > Without this, the app will try to use `/app/config` (Docker path) and fail on macOS/Linux.
+
+3. **Create config directories**
+
+   ```bash
+   mkdir -p config static
+   ```
+
+4. **Install Go dependencies**
+
+   ```bash
+   go mod download
+   ```
+
+5. **Install frontend dependencies**
+   ```bash
+   cd web
+   bun install  # or: npm install
+   cd ..
+   ```
+
+### Running locally
+
+You need two terminals — one for the backend, one for the frontend:
+
+**Terminal 1 — Backend (Go)**
+
+```bash
+go run ./cmd/herbst
 ```
+
+The API server runs on `http://localhost:8080`
+
+**Terminal 2 — Frontend (Vite)**
+
+```bash
+cd web
+bun run dev  # or: npm run dev
+```
+
+The frontend dev server runs on `http://localhost:5173` with hot reload.
+
+> **Note:** In development, the frontend proxies API requests to the Go backend (configured in `vite.config.ts`).
+
+### Building
+
+**Build Go binary:**
+
+```bash
+go build -o herbst ./cmd/herbst
+```
+
+**Build frontend for production:**
+
+```bash
+cd web
+bun run build  # or: npm run build
+```
+
+Output goes to `web/dist/`.
+
+**Build with version (like Docker does):**
+
+```bash
+go build -ldflags="-X main.Version=v0.2.7" -o herbst ./cmd/herbst
+```
+
+### Project structure
+
+```
+herbst/
+├── cmd/
+│   ├── herbst/              # Main dashboard server
+│   └── herbst-docker-agent/ # Remote Docker agent
+├── internal/
+│   ├── config/              # Config loading & types
+│   ├── agents/              # WebSocket agent handling
+│   ├── themes/              # Theme loading
+│   └── util/                # Utilities
+├── web/                     # Vue 3 + Vite frontend
+│   └── src/
+│       ├── components/      # Vue components
+│       ├── views/           # Page views
+│       ├── types/           # TypeScript types
+│       └── lib/             # Utilities
+├── config/                  # Local dev config (gitignored)
+├── static/                  # Static files (backgrounds, icons)
+└── .env                     # Local environment (gitignored)
+```
+
+### Tips
+
+- **Config changes**: The app watches `config.toml` and `themes.toml` for changes and auto-reloads
+- **API testing**: All endpoints are under `/api/` (e.g., `/api/config`, `/api/version`, `/api/system/stats`)
+- **Themes**: Edit `themes.toml` to customize or add new themes
+
+---
 
 ## License
 
