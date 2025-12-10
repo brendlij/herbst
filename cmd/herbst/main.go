@@ -29,6 +29,9 @@ import (
 	"herbst/internal/util"
 )
 
+// Version is set at build time via -ldflags
+var Version = "dev"
+
 const (
 	envStaticDir       = "HERBST_STATIC_DIR"
 	devStaticDir       = "./runtime/static"
@@ -248,7 +251,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-		// WebSocket für Agents: /api/agents/ws
+	// WebSocket für Agents: /api/agents/ws
 	mux.HandleFunc("/api/agents/ws", agentServer.HandleWS)
 
 	// Remote-Docker-Nodes: /api/docker/nodes
@@ -287,6 +290,19 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"message": "Configuration reloaded successfully",
+		})
+	})
+
+	// API endpoint: GET /api/version
+	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"version": Version,
 		})
 	})
 
@@ -447,7 +463,7 @@ func main() {
 		}
 
 		resp, err := client.Do(req)
-		
+
 		// If HEAD fails or returns 405 (Method Not Allowed), try GET
 		if err != nil || (resp != nil && resp.StatusCode == 405) {
 			if resp != nil {
@@ -491,7 +507,7 @@ func main() {
 		// Determine coordinates based on location config
 		if weatherCfg.Location != "" {
 			location := strings.TrimSpace(weatherCfg.Location)
-			
+
 			// Auto-detect if it's a zip code: starts with digits or has "zip:" prefix
 			isZipCode := strings.HasPrefix(strings.ToLower(location), "zip:")
 			if !isZipCode && len(location) > 0 {
@@ -499,13 +515,13 @@ func main() {
 				firstChar := location[0]
 				isZipCode = firstChar >= '0' && firstChar <= '9'
 			}
-			
+
 			if isZipCode {
 				// Remove "zip:" prefix if present
 				zipPart := strings.TrimPrefix(location, "zip:")
 				zipPart = strings.TrimPrefix(zipPart, "ZIP:")
 				zipPart = strings.TrimSpace(zipPart)
-				
+
 				geoURL := fmt.Sprintf(
 					"http://api.openweathermap.org/geo/1.0/zip?zip=%s&appid=%s",
 					zipPart,
@@ -851,92 +867,92 @@ func main() {
 	// API endpoint: GET /api/docker/agents
 	// Lists all configured docker agents with their connection status
 	mux.HandleFunc("/api/docker/agents", func(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 
-	w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/json")
 
-	// UI-Config aus dem Store (ist immer "valid", weil nur bei erfolgreichem Reload ersetzt wird)
-	currentCfg := store.Get()
+		// UI-Config aus dem Store (ist immer "valid", weil nur bei erfolgreichem Reload ersetzt wird)
+		currentCfg := store.Get()
 
-	// Verbundene Nodes aus Registry
-	connectedNodes := registry.Snapshot()
+		// Verbundene Nodes aus Registry
+		connectedNodes := registry.Snapshot()
 
-	// Original-Config für Tokens / Agents laden
-	cfg, _, err := config.EnsureAndLoadConfig()
-	if err != nil {
-		log.Printf("Failed to load config in /api/docker/agents: %v", err)
+		// Original-Config für Tokens / Agents laden
+		cfg, _, err := config.EnsureAndLoadConfig()
+		if err != nil {
+			log.Printf("Failed to load config in /api/docker/agents: %v", err)
 
-		// Kein Panic, sondern sauberer Fehler-Response
-		w.WriteHeader(http.StatusInternalServerError)
+			// Kein Panic, sondern sauberer Fehler-Response
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"enabled":       currentCfg.Docker.Enabled,
+				"agents":        []interface{}{},
+				"serverHost":    r.Host,
+				"agentProtocol": "ws",
+				"error":         "failed to load config",
+			})
+			return
+		}
+
+		type AgentResponse struct {
+			Name       string      `json:"name"`
+			Token      string      `json:"token"`
+			Connected  bool        `json:"connected"`
+			LastSeen   *string     `json:"lastSeen"`
+			Containers interface{} `json:"containers"`
+		}
+
+		agentsList := make([]AgentResponse, 0, len(cfg.Docker.Agents))
+
+		for _, agentCfg := range cfg.Docker.Agents {
+			// Use configured token or generate one
+			token := agentCfg.Token
+			if token == "" {
+				token = agents.GenerateToken(agentCfg.Name)
+			}
+
+			agent := AgentResponse{
+				Name:       agentCfg.Name,
+				Token:      token,
+				Connected:  false,
+				LastSeen:   nil,
+				Containers: []interface{}{},
+			}
+
+			if node, exists := connectedNodes[agentCfg.Name]; exists {
+				agent.Connected = node.Connected
+				if !node.LastSeen.IsZero() {
+					lastSeen := node.LastSeen.Format(time.RFC3339)
+					agent.LastSeen = &lastSeen
+				}
+				agent.Containers = node.Containers
+			}
+
+			agentsList = append(agentsList, agent)
+		}
+
+		// Host für den Docker-Run-Command
+		hostURL := cfg.Docker.Host
+		if hostURL == "" {
+			hostURL = r.Host
+		}
+
+		// Protocol for WebSocket connection (ws or wss)
+		protocol := cfg.Docker.AgentProtocol
+		if protocol == "" {
+			protocol = "ws"
+		}
+
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"enabled":       currentCfg.Docker.Enabled,
-			"agents":        []interface{}{},
-			"serverHost":    r.Host,
-			"agentProtocol": "ws",
-			"error":         "failed to load config",
+			"agents":        agentsList,
+			"serverHost":    hostURL,
+			"agentProtocol": protocol,
 		})
-		return
-	}
-
-	type AgentResponse struct {
-		Name       string      `json:"name"`
-		Token      string      `json:"token"`
-		Connected  bool        `json:"connected"`
-		LastSeen   *string     `json:"lastSeen"`
-		Containers interface{} `json:"containers"`
-	}
-
-	agentsList := make([]AgentResponse, 0, len(cfg.Docker.Agents))
-
-	for _, agentCfg := range cfg.Docker.Agents {
-		// Use configured token or generate one
-		token := agentCfg.Token
-		if token == "" {
-			token = agents.GenerateToken(agentCfg.Name)
-		}
-
-		agent := AgentResponse{
-			Name:       agentCfg.Name,
-			Token:      token,
-			Connected:  false,
-			LastSeen:   nil,
-			Containers: []interface{}{},
-		}
-
-		if node, exists := connectedNodes[agentCfg.Name]; exists {
-			agent.Connected = node.Connected
-			if !node.LastSeen.IsZero() {
-				lastSeen := node.LastSeen.Format(time.RFC3339)
-				agent.LastSeen = &lastSeen
-			}
-			agent.Containers = node.Containers
-		}
-
-		agentsList = append(agentsList, agent)
-	}
-
-	// Host für den Docker-Run-Command
-	hostURL := cfg.Docker.Host
-	if hostURL == "" {
-		hostURL = r.Host
-	}
-
-	// Protocol for WebSocket connection (ws or wss)
-	protocol := cfg.Docker.AgentProtocol
-	if protocol == "" {
-		protocol = "ws"
-	}
-
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"enabled":       currentCfg.Docker.Enabled,
-		"agents":        agentsList,
-		"serverHost":    hostURL,
-		"agentProtocol": protocol,
 	})
-})
 
 	// SSE endpoint for live reload
 	mux.HandleFunc("/api/events", func(w http.ResponseWriter, r *http.Request) {

@@ -17,6 +17,9 @@ FROM golang:1.25.2-alpine AS backend-builder
 
 WORKDIR /app
 
+# Version build argument (set via --build-arg VERSION=v1.0.0)
+ARG VERSION=dev
+
 # Install build dependencies
 RUN apk add --no-cache gcc musl-dev
 
@@ -24,10 +27,10 @@ RUN apk add --no-cache gcc musl-dev
 COPY go.mod go.sum* ./
 RUN go mod download
 
-# Build binary
+# Build binary with version info
 COPY cmd/ ./cmd/
 COPY internal/ ./internal/
-RUN CGO_ENABLED=0 GOOS=linux go build -o herbst ./cmd/herbst
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-X main.Version=${VERSION}" -o herbst ./cmd/herbst
 
 
 # Final image

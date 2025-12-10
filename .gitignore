@@ -143,3 +143,4 @@ runtime/*
 dist/
 build/
 *.exe
+config/*

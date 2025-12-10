@@ -1,4 +1,20 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { ref, onMounted } from "vue";
+
+const version = ref<string>("...");
+
+onMounted(async () => {
+  try {
+    const res = await fetch("/api/version");
+    if (res.ok) {
+      const data = await res.json();
+      version.value = data.version || "unknown";
+    }
+  } catch {
+    version.value = "unknown";
+  }
+});
+</script>
 
 <template>
   <footer class="footer-bar">
@@ -9,6 +25,7 @@
       class="footer-link"
     >
       <span>Powered by Herbst 🍂🍁</span>
+      <span class="version">{{ version }}</span>
       <i class="mdi mdi-github"></i>
     </a>
   </footer>
@@ -40,5 +57,10 @@
 
 .footer-link:hover {
   color: var(--color-accent);
+}
+
+.version {
+  opacity: 0.7;
+  font-size: 0.75rem;
 }
 </style>

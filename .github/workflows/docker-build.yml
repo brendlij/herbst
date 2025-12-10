@@ -51,6 +51,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          build-args: |
+            VERSION=dev
           tags: |
             ghcr.io/${{ github.repository_owner }}/herbst:dev
             ghcr.io/${{ github.repository_owner }}/herbst:${{ github.ref_name }}
@@ -78,6 +80,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          build-args: |
+            VERSION=${{ env.VERSION }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/herbst:latest
             ghcr.io/${{ github.repository_owner }}/herbst:${{ env.VERSION }}
