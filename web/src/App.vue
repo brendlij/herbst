@@ -147,6 +147,7 @@ onUnmounted(() => {
       :weather="config.weather"
       :docker="config.docker"
       :system="config.system"
+      :clock="config.ui?.clock"
       :active-tab="activeTab"
       @tab-change="handleTabChange"
       @search="searchQuery = $event"

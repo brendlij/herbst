@@ -22,6 +22,10 @@ font = ""
 image = ""  # Filename from /static (e.g. "bg.jpg") or full URL
 blur = 0
 
+[ui.clock]
+time-format = "24h"    # "24h" or "12h"
+date-format = "short"  # "short" (3. Dez 2025) or "numeric" (03.12.2025)
+
 
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │  WEATHER (OpenWeatherMap)                                                 │

@@ -5,6 +5,7 @@ import type {
   WeatherConfig,
   DockerConfig,
   SystemConfig,
+  ClockConfig,
 } from "../types/config";
 
 defineProps<{
@@ -12,6 +13,7 @@ defineProps<{
   weather: WeatherConfig;
   docker: DockerConfig;
   system: SystemConfig;
+  clock?: ClockConfig;
   activeTab: string;
 }>();
 
@@ -27,6 +29,7 @@ const emit = defineEmits<{
       <HeaderBar
         :title="title"
         :weather="weather"
+        :clock="clock"
         :active-tab="activeTab"
         :docker-enabled="docker.enabled"
         :docker-agents-configured="docker.agentsConfigured"
@@ -65,6 +68,6 @@ const emit = defineEmits<{
 }
 
 .main {
-  padding-bottom: 2rem;
+  padding: 0 1.5rem 2rem 1.5rem;
 }
 </style>

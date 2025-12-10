@@ -116,6 +116,38 @@ func (b *SSEBroker) Notify(event string) {
 	b.broadcast <- event
 }
 
+// CPUCache holds cached CPU usage percentage updated in background
+type CPUCache struct {
+	mu      sync.RWMutex
+	percent float64
+}
+
+func (c *CPUCache) Get() float64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.percent
+}
+
+func (c *CPUCache) Update(percent float64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.percent = percent
+}
+
+// StartCPUMonitor starts a background goroutine that updates CPU usage
+func StartCPUMonitor(cache *CPUCache) {
+	go func() {
+		for {
+			// This blocks for 1 second to measure CPU usage
+			cpuPercent, err := cpu.Percent(time.Second, false)
+			if err == nil && len(cpuPercent) > 0 {
+				cache.Update(cpuPercent[0])
+			}
+			// No additional sleep needed - cpu.Percent already takes 1 second
+		}
+	}()
+}
+
 // ConfigStore holds the current config with thread-safe access
 type ConfigStore struct {
 	mu          sync.RWMutex
@@ -215,6 +247,10 @@ func main() {
 	// Initialize SSE broker for live reload
 	broker := NewSSEBroker()
 	go broker.Run()
+
+	// Initialize CPU cache and start background monitor
+	cpuCache := &CPUCache{}
+	StartCPUMonitor(cpuCache)
 
 	// Initialize agent registry and server
 	registry := agents.NewRegistry()
@@ -782,12 +818,8 @@ func main() {
 
 		w.Header().Set("Content-Type", "application/json")
 
-		// Get CPU usage (average over 500ms)
-		cpuPercent, err := cpu.Percent(500*time.Millisecond, false)
-		cpuUsage := 0.0
-		if err == nil && len(cpuPercent) > 0 {
-			cpuUsage = cpuPercent[0]
-		}
+		// Get CPU usage from cache (updated in background, no blocking)
+		cpuUsage := cpuCache.Get()
 
 		// Get CPU info
 		cpuInfo, _ := cpu.Info()

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from "vue";
+import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import Logo from "./Logo.vue";
-import type { WeatherConfig } from "../types/config";
+import type { WeatherConfig, ClockConfig } from "../types/config";
 
 const props = defineProps<{
   title: string;
   weather: WeatherConfig;
+  clock?: ClockConfig;
   activeTab: string;
   dockerEnabled: boolean;
   dockerAgentsConfigured: boolean;
@@ -18,8 +19,10 @@ const emit = defineEmits<{
 
 const time = ref("");
 const date = ref("");
-const use24h = ref(true);
-const useGermanDate = ref(true); // true = "3. Dez 2025", false = "03.12.2025"
+
+// Use config values with defaults
+const use24h = computed(() => props.clock?.timeFormat !== "12h");
+const useShortDate = computed(() => props.clock?.dateFormat !== "numeric");
 
 // Weather state
 const weatherData = ref<{
@@ -43,7 +46,7 @@ function updateClock() {
     hour12: !use24h.value,
   });
 
-  if (useGermanDate.value) {
+  if (useShortDate.value) {
     // German format: "3. Dez 2025"
     date.value = now.toLocaleDateString("de-DE", {
       day: "numeric",
@@ -60,15 +63,10 @@ function updateClock() {
   }
 }
 
-function toggleHourFormat() {
-  use24h.value = !use24h.value;
+// Watch for config changes and update clock
+watch(() => props.clock, () => {
   updateClock();
-}
-
-function toggleDateFormat() {
-  useGermanDate.value = !useGermanDate.value;
-  updateClock();
-}
+}, { deep: true });
 
 async function fetchWeather() {
   try {
@@ -185,13 +183,6 @@ onUnmounted(() => {
       >
         <div>System</div>
       </div>
-      <div
-        class="tab"
-        :class="{ active: activeTab === 'config' }"
-        @click="emit('tabChange', 'config')"
-      >
-        <div>Configuration</div>
-      </div>
     </nav>
 
     <!-- Right section - weather and datetime -->
@@ -213,8 +204,18 @@ onUnmounted(() => {
 
       <!-- DateTime stacked -->
       <div class="datetime">
-        <span class="time" @click="toggleHourFormat">{{ time }}</span>
-        <span class="date" @click="toggleDateFormat">{{ date }}</span>
+        <span class="time">{{ time }}</span>
+        <span class="date">{{ date }}</span>
+      </div>
+
+      <!-- Config icon -->
+      <div
+        class="tab tab-icon config-icon"
+        :class="{ active: activeTab === 'config' }"
+        @click="emit('tabChange', 'config')"
+        title="Configuration"
+      >
+        <i class="mdi mdi-cog"></i>
       </div>
     </div>
   </header>
@@ -263,6 +264,11 @@ onUnmounted(() => {
   user-select: none;
 }
 
+.tab-icon {
+  padding: 10px 14px;
+  font-size: 1.1rem;
+}
+
 .tab:hover {
   color: var(--color-text);
   background: var(--color-bg);
@@ -301,6 +307,10 @@ onUnmounted(() => {
   flex: 1;
   justify-content: flex-end;
   min-width: 0;
+}
+
+.config-icon {
+  margin-left: 8px;
 }
 
 .logo-icon {

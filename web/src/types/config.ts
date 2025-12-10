@@ -53,9 +53,15 @@ export type DockerContainer = {
   created: number;
 };
 
+export type ClockConfig = {
+  timeFormat: "24h" | "12h";
+  dateFormat: "short" | "numeric";
+};
+
 export type UIConfig = {
   background?: BackgroundConfig;
   font?: string;
+  clock?: ClockConfig;
 };
 
 export type HerbstConfig = {

@@ -35,7 +35,7 @@ type Weather struct {
 
 // DockerLocal holds local Docker integration configuration
 type DockerLocal struct {
-	Enabled    *bool  `toml:"enabled"     json:"enabled"`    // Pointer to detect if explicitly set
+	Enabled    *bool  `toml:"enabled"     json:"enabled"` // Pointer to detect if explicitly set
 	SocketPath string `toml:"socket-path" json:"socketPath"`
 }
 
@@ -83,6 +83,13 @@ func (s *System) IsEnabled() bool {
 type UI struct {
 	Background Background `toml:"background" json:"background"`
 	Font       string     `toml:"font"       json:"font"`
+	Clock      Clock      `toml:"clock"      json:"clock"`
+}
+
+// Clock holds clock display configuration
+type Clock struct {
+	TimeFormat string `toml:"time-format" json:"timeFormat"` // "24h" or "12h"
+	DateFormat string `toml:"date-format" json:"dateFormat"` // "short" (3. Dez 2025) or "numeric" (03.12.2025)
 }
 
 // Service represents a dashboard service entry

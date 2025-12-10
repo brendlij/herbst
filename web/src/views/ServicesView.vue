@@ -43,7 +43,7 @@ const hasSections = computed(() => {
 .services-view {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 3rem;
 }
 
 .service-section {

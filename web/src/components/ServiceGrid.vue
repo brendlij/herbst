@@ -37,7 +37,7 @@ const filteredServices = computed(() => {
 <style scoped>
 .service-grid {
   display: grid;
-  gap: 16px;
+  gap: 2em;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 }
 
