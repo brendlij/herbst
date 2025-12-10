@@ -144,3 +144,7 @@ dist/
 build/
 *.exe
 config/*
+
+# Go binaries (macOS/Linux)
+herbst
+herbst-docker-agent
